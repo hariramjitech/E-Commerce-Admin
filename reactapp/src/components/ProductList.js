@@ -17,13 +17,18 @@ const ProductList = () => {
     imageUrl: ''
   });
 
-  // Filter states
+  // Same filter states as CreateOrder
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
-  const [minPrice, setMinPrice] = useState('');
-  const [maxPrice, setMaxPrice] = useState('');
-  const [stockStatus, setStockStatus] = useState('all');
   const [sortBy, setSortBy] = useState('name-asc');
+
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  useEffect(() => {
+    applyFiltersAndSorting();
+  }, [products, searchTerm, categoryFilter, sortBy]);
 
   const loadProducts = async () => {
     try {
@@ -39,25 +44,11 @@ const ProductList = () => {
     }
   };
 
-  useEffect(() => {
-    loadProducts();
-  }, []);
-
-  useEffect(() => {
-    applyFiltersAndSorting();
-  }, [products, searchTerm, categoryFilter, minPrice, maxPrice, stockStatus, sortBy]);
-
-  const showMessage = (text, type) => {
-    setAlert({ show: true, message: text, type });
-    setTimeout(() => {
-      setAlert({ show: false, message: '', type: '' });
-    }, 3000);
-  };
-
+  // Exact same filtering logic as CreateOrder
   const applyFiltersAndSorting = () => {
     let result = [...products];
 
-    // Apply search filter (name and description)
+    // Apply search filter
     if (searchTerm) {
       result = result.filter(p => 
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -68,25 +59,8 @@ const ProductList = () => {
     // Apply category filter
     if (categoryFilter) {
       result = result.filter(p => 
-        p.category.toLowerCase().includes(categoryFilter.toLowerCase())
+        p.category.toLowerCase().startsWith(categoryFilter.toLowerCase())
       );
-    }
-
-    // Apply price range filter
-    if (minPrice !== '') {
-      result = result.filter(p => p.price >= parseFloat(minPrice));
-    }
-    if (maxPrice !== '') {
-      result = result.filter(p => p.price <= parseFloat(maxPrice));
-    }
-
-    // Apply stock status filter
-    if (stockStatus === 'in') {
-      result = result.filter(p => p.stockQuantity > 0);
-    } else if (stockStatus === 'out') {
-      result = result.filter(p => p.stockQuantity === 0);
-    } else if (stockStatus === 'low') {
-      result = result.filter(p => p.stockQuantity > 0 && p.stockQuantity <= 10);
     }
 
     // Apply sorting
@@ -102,13 +76,31 @@ const ProductList = () => {
       result.sort((a, b) => a.stockQuantity - b.stockQuantity);
     } else if (sortBy === 'stock-desc') {
       result.sort((a, b) => b.stockQuantity - a.stockQuantity);
-    } else if (sortBy === 'category-asc') {
-      result.sort((a, b) => a.category.localeCompare(b.category));
-    } else if (sortBy === 'category-desc') {
-      result.sort((a, b) => b.category.localeCompare(a.category));
     }
 
     setFilteredProducts(result);
+  };
+
+  const showMessage = (text, type) => {
+    setAlert({ show: true, message: text, type });
+    setTimeout(() => {
+      setAlert({ show: false, message: '', type: '' });
+    }, 3000);
+  };
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setCategoryFilter('');
+    setSortBy('name-asc');
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
   };
 
   const handleDelete = async (id) => {
@@ -183,29 +175,6 @@ const ProductList = () => {
     }
   };
 
-  const clearFilters = () => {
-    setSearchTerm('');
-    setCategoryFilter('');
-    setMinPrice('');
-    setMaxPrice('');
-    setStockStatus('all');
-    setSortBy('name-asc');
-  };
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
-
-  const getUniqueCategories = () => {
-    const categories = [...new Set(products.map(p => p.category))];
-    return categories.sort();
-  };
-
   if (loading) {
     return (
       <div className="loading-container">
@@ -255,15 +224,14 @@ const ProductList = () => {
           </div>
         </div>
 
-        {/* Filters Section */}
+        {/* Filters Section - Same as CreateOrder */}
         <div className="form-section">
           <div className="section-header">
-            <h2 className="section-title">Filters & Search</h2>
+            <h2 className="section-title">Search & Filter Products</h2>
           </div>
           
           <div className="filters-section">
             <div className="filters-grid">
-              {/* Search */}
               <input
                 type="text"
                 placeholder="Search products..."
@@ -271,51 +239,13 @@ const ProductList = () => {
                 onChange={e => setSearchTerm(e.target.value)}
                 className="filter-input"
               />
-              
-              {/* Category Filter */}
-              <select
+              <input
+                type="text"
+                placeholder="Filter by category..."
                 value={categoryFilter}
                 onChange={e => setCategoryFilter(e.target.value)}
-                className="filter-select"
-              >
-                <option value="">All Categories</option>
-                {getUniqueCategories().map(category => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
-
-              {/* Price Range */}
-              <input
-                type="number"
-                placeholder="Min Price (₹)"
-                value={minPrice}
-                onChange={e => setMinPrice(e.target.value)}
                 className="filter-input"
-                min="0"
               />
-              
-              <input
-                type="number"
-                placeholder="Max Price (₹)"
-                value={maxPrice}
-                onChange={e => setMaxPrice(e.target.value)}
-                className="filter-input"
-                min="0"
-              />
-
-              {/* Stock Status */}
-              <select
-                value={stockStatus}
-                onChange={e => setStockStatus(e.target.value)}
-                className="filter-select"
-              >
-                <option value="all">All Products</option>
-                <option value="in">In Stock</option>
-                <option value="out">Out of Stock</option>
-                <option value="low">Low Stock (≤10)</option>
-              </select>
-
-              {/* Sort By */}
               <select 
                 value={sortBy} 
                 onChange={e => setSortBy(e.target.value)}
@@ -327,11 +257,7 @@ const ProductList = () => {
                 <option value="price-desc">Price (High-Low)</option>
                 <option value="stock-asc">Stock (Low-High)</option>
                 <option value="stock-desc">Stock (High-Low)</option>
-                <option value="category-asc">Category (A-Z)</option>
-                <option value="category-desc">Category (Z-A)</option>
               </select>
-
-              {/* Clear Filters */}
               <button 
                 type="button" 
                 onClick={clearFilters} 
@@ -445,12 +371,9 @@ const ProductList = () => {
                           />
                         ) : (
                           <span className={`stock-badge ${
-                            product.stockQuantity === 0 ? 'out-of-stock' : 
-                            product.stockQuantity <= 10 ? 'low-stock' : 'in-stock'
+                            product.stockQuantity === 0 ? 'out-of-stock' : 'in-stock'
                           }`}>
-                            {product.stockQuantity === 0 ? 'Out of Stock' : 
-                             product.stockQuantity <= 10 ? `Low: ${product.stockQuantity}` : 
-                             product.stockQuantity}
+                            {product.stockQuantity === 0 ? 'Out of Stock' : product.stockQuantity}
                           </span>
                         )}
                       </td>
