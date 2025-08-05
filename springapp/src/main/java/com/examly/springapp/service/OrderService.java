@@ -5,21 +5,19 @@ import com.examly.springapp.dto.OrderItemCreateRequest;
 import com.examly.springapp.model.Order;
 import com.examly.springapp.model.OrderItem;
 import com.examly.springapp.model.Product;
-import com.examly.springapp.repository.OrderItemRepository;
 import com.examly.springapp.repository.OrderRepository;
 import com.examly.springapp.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
 public class OrderService {
-    @Autowired
-    private OrderRepository orderRepository;
 
     @Autowired
-    private OrderItemRepository orderItemRepository;
+    private OrderRepository orderRepository;
 
     @Autowired
     private ProductRepository productRepository;
@@ -29,13 +27,14 @@ public class OrderService {
         double total = 0;
 
         for (OrderItemCreateRequest item : request.getOrderItems()) {
-            Product product = productRepository.findById(item.getProductId())
-                    .orElseThrow(() -> new RuntimeException("Product not found"));
-
+            Optional<Product> optionalProduct = productRepository.findById(item.getProductId());
+            if (optionalProduct.isEmpty()) {
+                throw new RuntimeException("Product not found");
+            }
+            Product product = optionalProduct.get();
             if (product.getStockQuantity() < item.getQuantity()) {
                 throw new RuntimeException("Insufficient stock");
             }
-
             product.setStockQuantity(product.getStockQuantity() - item.getQuantity());
             productRepository.save(product);
 
@@ -44,9 +43,8 @@ public class OrderService {
                     .quantity(item.getQuantity())
                     .priceAtPurchase(product.getPrice())
                     .build();
-
-            total += product.getPrice() * item.getQuantity();
             orderItems.add(orderItem);
+            total += product.getPrice() * item.getQuantity();
         }
 
         Order order = Order.builder()
@@ -55,22 +53,23 @@ public class OrderService {
                 .shippingAddress(request.getShippingAddress())
                 .status("PENDING")
                 .totalAmount(total)
-                .orderItems(orderItems)
+                .orderDate(LocalDateTime.now())
                 .build();
 
         for (OrderItem item : orderItems) {
             item.setOrder(order);
         }
-
+        order.setOrderItems(orderItems);
         return orderRepository.save(order);
     }
 
     public Order updateStatus(Long id, String status) {
-        Order order = orderRepository.findById(id).orElseThrow(() -> new RuntimeException("Order not found"));
-        List<String> validStatuses = List.of("PENDING", "SHIPPED", "DELIVERED", "CANCELLED");
+        List<String> validStatuses = Arrays.asList("PENDING", "SHIPPED", "DELIVERED", "CANCELLED");
         if (!validStatuses.contains(status)) {
             throw new RuntimeException("Invalid status");
         }
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
         order.setStatus(status);
         return orderRepository.save(order);
     }
@@ -80,6 +79,7 @@ public class OrderService {
     }
 
     public Order getById(Long id) {
-        return orderRepository.findById(id).orElseThrow(() -> new RuntimeException("Order not found"));
+        return orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
     }
 }
