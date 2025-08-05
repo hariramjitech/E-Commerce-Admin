@@ -8,10 +8,11 @@ import java.time.LocalDateTime;
 import java.util.List;
 @Builder
 @Entity
-@Table(name = "orders") // ✅ avoid using SQL reserved keyword "order"
+@Table(name = "orders") // Avoid SQL reserved keyword
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Order {
 
     @Id
@@ -25,7 +26,7 @@ public class Order {
     private String status;
     private LocalDateTime orderDate;
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<OrderItem> orderItems;
 

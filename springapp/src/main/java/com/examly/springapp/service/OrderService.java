@@ -41,6 +41,7 @@ public class OrderService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient stock for product: " + product.getName());
             }
 
+            // Reduce product stock
             product.setStockQuantity(product.getStockQuantity() - i.getQuantity());
             productRepo.save(product);
 
@@ -49,7 +50,7 @@ public class OrderService {
                     product.getId(),
                     i.getQuantity(),
                     product.getPrice(),
-                    order, product
+                    order
             );
         }).collect(Collectors.toList());
 
@@ -76,7 +77,12 @@ public class OrderService {
         Order order = orderRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order ID " + id + " not found"));
 
-        order.setStatus(status);
+        List<String> validStatuses = List.of("PENDING", "SHIPPED", "DELIVERED", "CANCELLED");
+        if (!validStatuses.contains(status.toUpperCase())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid status");
+        }
+
+        order.setStatus(status.toUpperCase());
         return orderRepo.save(order);
     }
 

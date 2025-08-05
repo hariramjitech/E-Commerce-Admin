@@ -10,12 +10,25 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class Product {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @NotBlank private String name;
-    @NotBlank private String description;
-    @Positive private double price;
-    @NotBlank private String category;
-    @Min(0) private int stockQuantity;
+
+    @NotBlank
+    private String name;
+
+    @NotBlank
+    private String description;
+
+    @Positive
+    private double price;
+
+    @NotBlank
+    private String category;
+
+    @Min(0)
+    private int stockQuantity;
+
     private String imageUrl;
 }
