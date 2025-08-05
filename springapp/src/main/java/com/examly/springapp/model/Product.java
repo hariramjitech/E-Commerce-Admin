@@ -1,20 +1,23 @@
 package com.examly.springapp.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
 import lombok.*;
 
 @Entity
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Product {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @NotBlank private String name;
-    @NotBlank private String description;
-    @Positive private double price;
-    @NotBlank private String category;
-    @Min(0) private int stockQuantity;
+
+    private String name;
+    private String description;
+    private Double price;
+    private String category;
+    private Integer stockQuantity;
     private String imageUrl;
 }
