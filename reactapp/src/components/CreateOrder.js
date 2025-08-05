@@ -82,7 +82,8 @@ const CreateOrder = () => {
     setAlert({ show: true, message: text, type });
     setTimeout(() => {
       setAlert({ show: false, message: '', type: '' });
-      if (type === 'success') {
+      // Only navigate away when order is successfully placed
+      if (type === 'order-success') {
         setTimeout(() => navigate('/orders'), 300);
       }
     }, 3000);
@@ -102,7 +103,8 @@ const CreateOrder = () => {
           product: product
         }]
       });
-      showMessage(`✅ ${product.name} added to order`, 'success');
+      // Changed from 'success' to 'info' so it doesn't trigger navigation
+      showMessage(`✅ ${product.name} added to order`, 'info');
     } else {
       showMessage('⚠️ Product already in order', 'warning');
     }
@@ -189,7 +191,8 @@ const CreateOrder = () => {
     try {
       setSubmitting(true);
       await createOrder(orderData);
-      showMessage("✅ Order created successfully!", 'success');
+      // Changed to 'order-success' to trigger navigation only for successful orders
+      showMessage("✅ Order created successfully!", 'order-success');
       
       // Reset form after successful submission
       setTimeout(() => {
