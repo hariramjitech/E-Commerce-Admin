@@ -26,12 +26,13 @@ public class OrderService {
         List<OrderItem> orderItems = new ArrayList<>();
         double total = 0.0;
 
+        // Check and update stock for each item
         for (OrderItemCreateRequest itemReq : request.getOrderItems()) {
             Product product = productRepository.findById(itemReq.getProductId())
                     .orElseThrow(() -> new ValidationException("Product not found"));
 
             if (product.getStockQuantity() < itemReq.getQuantity()) {
-                throw new ValidationException("Insufficient stock");
+                throw new ValidationException("Insufficient stock for product: " + product.getName());
             }
 
             product.setStockQuantity(product.getStockQuantity() - itemReq.getQuantity());
@@ -43,24 +44,28 @@ public class OrderService {
                     .quantity(itemReq.getQuantity())
                     .priceAtPurchase(price)
                     .build();
-            total += price * itemReq.getQuantity();
+
             orderItems.add(item);
+            total += price * itemReq.getQuantity();
         }
 
+        // Save order first
         Order order = Order.builder()
                 .customerName(request.getCustomerName())
                 .customerEmail(request.getCustomerEmail())
                 .shippingAddress(request.getShippingAddress())
                 .orderDate(LocalDateTime.now())
                 .status("PENDING")
-                .orderItems(new ArrayList<>()) // temp for circular ref fix
                 .totalAmount(total)
                 .build();
 
         Order savedOrder = orderRepository.save(order);
+
+        // Assign order reference to each item and save final order
         for (OrderItem item : orderItems) {
             item.setOrder(savedOrder);
         }
+
         savedOrder.setOrderItems(orderItems);
         return orderRepository.save(savedOrder);
     }
@@ -70,7 +75,8 @@ public class OrderService {
     }
 
     public Order getOrderById(Long id) {
-        return orderRepository.findById(id).orElseThrow(() -> new RuntimeException("Order not found"));
+        return orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
     }
 
     public Order updateStatus(Long id, OrderStatusUpdateRequest statusRequest) {
