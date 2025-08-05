@@ -49,4 +49,8 @@ public class ProductController {
         productService.deleteProduct(id);
         return ResponseEntity.noContent().build();
     }
+    @PostMapping("/bulk")
+public ResponseEntity<List<Product>> createProductsBulk(@RequestBody List<Product> products) {
+    return new ResponseEntity<>(productService.createProductsBulk(products), HttpStatus.CREATED);
+}
 }
