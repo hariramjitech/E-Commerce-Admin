@@ -1,12 +1,16 @@
 package com.examly.springapp.dto;
 
-import jakarta.validation.constraints.*;
-import lombok.*;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+@Getter
+@Setter
 public class OrderItemCreateRequest {
-    @NotNull private Long productId;
-    @Min(1) private int quantity;
+    @NotNull
+    private Long productId;
+
+    @Min(1)
+    private int quantity;
 }

@@ -5,10 +5,10 @@ import com.examly.springapp.model.Order;
 import com.examly.springapp.service.OrderService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -16,31 +16,27 @@ import java.util.*;
 public class OrderController {
 
     @Autowired
-    private OrderService service;
+    private OrderService orderService;
 
     @PostMapping
-    public ResponseEntity<Order> create(@Valid @RequestBody OrderCreateRequest r) {
-        return new ResponseEntity<>(service.createOrder(r), HttpStatus.CREATED);
-    }
-
-    @GetMapping
-    public List<Order> all() {
-        return service.getAllOrders();
-    }
-
-    @GetMapping("/{id}")
-    public Order byId(@PathVariable Long id) {
-        return service.getOrderById(id);
+    public Order create(@Valid @RequestBody OrderCreateRequest request) {
+        return orderService.createOrder(request);
     }
 
     @PatchMapping("/{id}/status")
-    public ResponseEntity<Order> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> req) {
-        return ResponseEntity.ok(service.updateStatus(id, req.get("status")));
+    public Order updateStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        String status = body.get("status");
+        return orderService.updateStatus(id, status);
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteById(@PathVariable Long id) {
-        service.deleteOrderById(id);
-        return ResponseEntity.noContent().build();
+    @GetMapping
+    public List<Order> getAll() {
+        return orderService.getAll();
+    }
+
+    @GetMapping("/{id}")
+    public Order getById(@PathVariable Long id) {
+        return orderService.getById(id);
     }
 }
+    
