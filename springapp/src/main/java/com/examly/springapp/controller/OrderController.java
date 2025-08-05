@@ -14,7 +14,9 @@ import java.util.*;
 @RequestMapping("/api/orders")
 @CrossOrigin("*")
 public class OrderController {
-    @Autowired private OrderService service;
+
+    @Autowired
+    private OrderService service;
 
     @PostMapping
     public ResponseEntity<Order> create(@Valid @RequestBody OrderCreateRequest r) {

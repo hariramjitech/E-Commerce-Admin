@@ -30,15 +30,15 @@ public class OrderService {
         order.setCustomerName(request.getCustomerName());
         order.setCustomerEmail(request.getCustomerEmail());
         order.setShippingAddress(request.getShippingAddress());
-        order.setStatus("PENDING");
+        order.setStatus("PLACED"); // changed from PENDING to PLACED (as per test)
         order.setOrderDate(LocalDateTime.now());
 
         List<OrderItem> items = request.getOrderItems().stream().map(i -> {
             Product product = productRepo.findById(i.getProductId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product ID " + i.getProductId() + " not found"));
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product not found"));
 
             if (product.getStockQuantity() < i.getQuantity()) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient stock for product: " + product.getName());
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient stock");
             }
 
             product.setStockQuantity(product.getStockQuantity() - i.getQuantity());
@@ -69,12 +69,17 @@ public class OrderService {
 
     public Order getOrderById(Long id) {
         return orderRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order ID " + id + " not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
     }
 
     public Order updateStatus(Long id, String status) {
         Order order = orderRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order ID " + id + " not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+
+        List<String> validStatuses = List.of("PLACED", "SHIPPED", "DELIVERED", "CANCELLED");
+        if (!validStatuses.contains(status)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid status");
+        }
 
         order.setStatus(status);
         return orderRepo.save(order);
@@ -82,7 +87,7 @@ public class OrderService {
 
     public void deleteOrderById(Long id) {
         if (!orderRepo.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order ID " + id + " not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
         }
         orderRepo.deleteById(id);
     }
