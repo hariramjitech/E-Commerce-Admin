@@ -8,82 +8,78 @@ import com.examly.springapp.model.Product;
 import com.examly.springapp.repository.OrderRepository;
 import com.examly.springapp.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.*;
 
 @Service
 public class OrderService {
 
     @Autowired
-    private OrderRepository orderRepo;
+    private OrderRepository orderRepository;
 
     @Autowired
-    private ProductRepository productRepo;
+    private ProductRepository productRepository;
 
     public Order createOrder(OrderCreateRequest request) {
-        Order order = new Order();
-        order.setCustomerName(request.getCustomerName());
-        order.setCustomerEmail(request.getCustomerEmail());
-        order.setShippingAddress(request.getShippingAddress());
-        order.setStatus("PENDING");
-        order.setOrderDate(LocalDateTime.now());
+        List<OrderItem> orderItems = new ArrayList<>();
+        double total = 0;
 
-        List<OrderItem> items = request.getOrderItems().stream().map(i -> {
-            Product product = productRepo.findById(i.getProductId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product ID " + i.getProductId() + " not found"));
-
-            if (product.getStockQuantity() < i.getQuantity()) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient stock for product: " + product.getName());
+        for (OrderItemCreateRequest item : request.getOrderItems()) {
+            Optional<Product> optionalProduct = productRepository.findById(item.getProductId());
+            if (optionalProduct.isEmpty()) {
+                throw new RuntimeException("Product not found");
             }
+            Product product = optionalProduct.get();
+            if (product.getStockQuantity() < item.getQuantity()) {
+                throw new RuntimeException("Insufficient stock");
+            }
+            product.setStockQuantity(product.getStockQuantity() - item.getQuantity());
+            productRepository.save(product);
 
-            product.setStockQuantity(product.getStockQuantity() - i.getQuantity());
-            productRepo.save(product);
+            OrderItem orderItem = OrderItem.builder()
+                    .product(product)
+                    .quantity(item.getQuantity())
+                    .priceAtPurchase(product.getPrice())
+                    .build();
+            orderItems.add(orderItem);
+            total += product.getPrice() * item.getQuantity();
+        }
 
-            return new OrderItem(
-                    null,
-                    product.getId(),
-                    i.getQuantity(),
-                    product.getPrice(),
-                    order
-            );
-        }).collect(Collectors.toList());
+        Order order = Order.builder()
+                .customerName(request.getCustomerName())
+                .customerEmail(request.getCustomerEmail())
+                .shippingAddress(request.getShippingAddress())
+                .status("PENDING")
+                .totalAmount(total)
+                .orderDate(LocalDateTime.now())
+                .build();
 
-        double total = items.stream()
-                .mapToDouble(i -> i.getPriceAtPurchase() * i.getQuantity())
-                .sum();
-
-        order.setTotalAmount(total);
-        order.setOrderItems(items);
-
-        return orderRepo.save(order);
-    }
-
-    public List<Order> getAllOrders() {
-        return orderRepo.findAll();
-    }
-
-    public Order getOrderById(Long id) {
-        return orderRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order ID " + id + " not found"));
+        for (OrderItem item : orderItems) {
+            item.setOrder(order);
+        }
+        order.setOrderItems(orderItems);
+        return orderRepository.save(order);
     }
 
     public Order updateStatus(Long id, String status) {
-        Order order = orderRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order ID " + id + " not found"));
-
+        List<String> validStatuses = Arrays.asList("PENDING", "SHIPPED", "DELIVERED", "CANCELLED");
+        if (!validStatuses.contains(status)) {
+            throw new RuntimeException("Invalid status");
+        }
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
         order.setStatus(status);
-        return orderRepo.save(order);
+        return orderRepository.save(order);
     }
 
-    public void deleteOrderById(Long id) {
-        if (!orderRepo.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order ID " + id + " not found");
-        }
-        orderRepo.deleteById(id);
+    public List<Order> getAll() {
+        return orderRepository.findAll();
+    }
+
+    public Order getById(Long id) {
+        return orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
     }
 }

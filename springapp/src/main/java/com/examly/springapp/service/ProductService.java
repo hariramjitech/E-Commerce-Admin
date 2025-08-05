@@ -12,24 +12,37 @@ public class ProductService {
     @Autowired
     private ProductRepository productRepository;
 
-    public Product createProduct(Product product) {
+    public Product create(Product product) {
+        if (product.getName() == null || product.getName().isBlank()
+            || product.getPrice() == null || product.getPrice() < 0) {
+            throw new IllegalArgumentException("Invalid product data");
+        }
         return productRepository.save(product);
     }
 
-    public List<Product> getAllProducts() {
-        return productRepository.findAll();
+    public List<Product> getFiltered(String category, Double minPrice, Double maxPrice) {
+        List<Product> all = productRepository.findAll();
+        return all.stream().filter(p -> {
+            boolean ok = true;
+            if (category != null && !category.isBlank())
+                ok &= p.getCategory() != null && p.getCategory().equalsIgnoreCase(category);
+            if (minPrice != null)
+                ok &= p.getPrice() != null && p.getPrice() >= minPrice;
+            if (maxPrice != null)
+                ok &= p.getPrice() != null && p.getPrice() <= maxPrice;
+            return ok;
+        }).toList();
     }
 
-    public Product getProductById(Long id) {
-        return productRepository.findById(id).orElse(null);
+    public Product get(Long id) {
+        return productRepository.findById(id).orElseThrow(() -> new RuntimeException("Product not found"));
     }
 
-    public Product updateProduct(Long id, Product updatedProduct) {
-        updatedProduct.setId(id);
-        return productRepository.save(updatedProduct);
-    }
-
-    public void deleteProduct(Long id) {
-        productRepository.deleteById(id);
+    public void updateStock(Long productId, int quantityChange) {
+        Product product = get(productId);
+        int newStock = product.getStockQuantity() + quantityChange;
+        if (newStock < 0) throw new RuntimeException("Insufficient stock");
+        product.setStockQuantity(newStock);
+        productRepository.save(product);
     }
 }

@@ -1,6 +1,5 @@
 package com.examly.springapp.model;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -8,10 +7,11 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "orders") // ✅ avoid using SQL reserved keyword "order"
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Order {
 
     @Id
@@ -19,13 +19,18 @@ public class Order {
     private Long id;
 
     private String customerName;
+
     private String customerEmail;
+
     private String shippingAddress;
-    private double totalAmount;
+
     private String status;
+
+    private Double totalAmount;
+
+    @Column(name = "order_date")
     private LocalDateTime orderDate;
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
-    @JsonManagedReference
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> orderItems;
 }
