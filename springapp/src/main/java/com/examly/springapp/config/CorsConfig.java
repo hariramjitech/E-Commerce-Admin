@@ -12,10 +12,7 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOriginPatterns(
-                            "http://localhost:8081", // ✅ Local frontend
-                            "https://8081-becabbbccbbfdfebebacdbf.premiumproject.examly.io" // ✅ Deployed frontend
-                        )
+                        .allowedOriginPatterns("https://8081-becabbbccbbfdfebebacdbf.premiumproject.examly.io")
                         .allowedMethods("*")
                         .allowedHeaders("*")
                         .allowCredentials(true);
