@@ -4,8 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -20,6 +19,6 @@ public class OrderItem {
     @ManyToOne
     private Order order;
 
-    private Integer quantity;
-    private Double priceAtPurchase;
+    private int quantity;
+    private double priceAtPurchase;
 }
