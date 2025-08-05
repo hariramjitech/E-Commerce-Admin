@@ -14,32 +14,26 @@ import java.util.*;
 @RequestMapping("/api/orders")
 @CrossOrigin("*")
 public class OrderController {
-
-    @Autowired
-    private OrderService service;
+    @Autowired private OrderService service;
 
     @PostMapping
-    public ResponseEntity<Order> create(@Valid @RequestBody OrderCreateRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.createOrder(request));
+    public ResponseEntity<Order> create(@Valid @RequestBody OrderCreateRequest r) {
+        return new ResponseEntity<>(service.createOrder(r), HttpStatus.CREATED);
     }
 
     @GetMapping
-    public ResponseEntity<List<Order>> all() {
-        return ResponseEntity.ok(service.getAllOrders());
+    public List<Order> all() {
+        return service.getAllOrders();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Order> byId(@PathVariable Long id) {
-        return ResponseEntity.ok(service.getOrderById(id));
+    public Order byId(@PathVariable Long id) {
+        return service.getOrderById(id);
     }
 
     @PatchMapping("/{id}/status")
     public ResponseEntity<Order> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> req) {
-        String status = req.get("status");
-        if (status == null || status.isBlank()) {
-            return ResponseEntity.badRequest().body(null);
-        }
-        return ResponseEntity.ok(service.updateStatus(id, status));
+        return ResponseEntity.ok(service.updateStatus(id, req.get("status")));
     }
 
     @DeleteMapping("/{id}")

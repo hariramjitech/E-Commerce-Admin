@@ -13,37 +13,25 @@ import java.util.List;
 @RequestMapping("/api/products")
 @CrossOrigin("*")
 public class ProductController {
+    @Autowired private ProductService service;
 
-    @Autowired
-    private ProductService service;
-
-    @PostMapping
-    public ResponseEntity<Product> create(@Valid @RequestBody Product product) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.createProduct(product));
+    @PostMapping public ResponseEntity<Product> create(@Valid @RequestBody Product p) {
+        return new ResponseEntity<>(service.createProduct(p), HttpStatus.CREATED);
     }
 
-    @GetMapping
-    public ResponseEntity<List<Product>> all(
-            @RequestParam(required = false) String category,
-            @RequestParam(required = false) Double minPrice,
-            @RequestParam(required = false) Double maxPrice
-    ) {
-        return ResponseEntity.ok(service.getFilteredProducts(category, minPrice, maxPrice));
+    @GetMapping public List<Product> all() {
+        return service.getAllProducts();
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Product> byId(@PathVariable Long id) {
-        Product product = service.getProductById(id);
-        return product != null ? ResponseEntity.ok(product) : ResponseEntity.notFound().build();
+    @GetMapping("/{id}") public Product byId(@PathVariable Long id) {
+        return service.getProductById(id);
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<Product> update(@PathVariable Long id, @RequestBody Product product) {
-        return ResponseEntity.ok(service.updateProduct(id, product));
+    @PutMapping("/{id}") public Product update(@PathVariable Long id, @RequestBody Product p) {
+        return service.updateProduct(id, p);
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    @DeleteMapping("/{id}") public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.deleteProduct(id);
         return ResponseEntity.noContent().build();
     }
