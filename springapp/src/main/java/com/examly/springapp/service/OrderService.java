@@ -2,7 +2,7 @@ package com.examly.springapp.service;
 
 import com.examly.springapp.dto.OrderCreateRequest;
 import com.examly.springapp.dto.OrderItemCreateRequest;
-import com.examly.springapp.dto.StatusUpdateRequest;
+import com.examly.springapp.dto.OrderStatusUpdateRequest;
 import com.examly.springapp.model.*;
 import com.examly.springapp.repository.OrderRepository;
 import com.examly.springapp.repository.ProductRepository;
@@ -73,7 +73,7 @@ public class OrderService {
         return orderRepository.findById(id).orElseThrow(() -> new RuntimeException("Order not found"));
     }
 
-    public Order updateStatus(Long id, StatusUpdateRequest statusRequest) {
+    public Order updateStatus(Long id, OrderStatusUpdateRequest statusRequest) {
         Order order = getOrderById(id);
         String newStatus = statusRequest.getStatus().toUpperCase();
         if (!VALID_STATUSES.contains(newStatus)) {
