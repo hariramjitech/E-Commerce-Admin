@@ -1,0 +1,60 @@
+/* src/style/OrderDetail.css */
+
+.order-detail-container {
+  max-width: 800px;
+  margin: 30px auto;
+  padding: 25px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  font-family: Arial, sans-serif;
+}
+
+.order-detail-container h2 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+.order-detail-container p {
+  margin: 10px 0;
+  font-size: 15px;
+  color: #444;
+}
+
+.order-detail-container strong {
+  color: #222;
+}
+
+.items-list {
+  margin-top: 20px;
+  list-style: none;
+  padding: 0;
+}
+
+.item-card {
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  background-color: #fafafa;
+}
+
+.item-details {
+  flex: 1;
+}
+
+.item-details div {
+  margin: 5px 0;
+}
+
+.item-image {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
