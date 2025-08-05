@@ -88,4 +88,10 @@ public class OrderService {
         order.setStatus(newStatus);
         return orderRepository.save(order);
     }
+    public void deleteOrder(Long id) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+        orderRepository.delete(order);
+}
+
 }
