@@ -2,41 +2,55 @@ package com.examly.springapp.service;
 
 import com.examly.springapp.model.Product;
 import com.examly.springapp.repository.ProductRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.ValidationException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class ProductService {
-    @Autowired
-    private ProductRepository productRepository;
 
-    public Product create(Product p) {
-        return productRepository.save(p);
+    private final ProductRepository productRepository;
+
+    public Product createProduct(Product product) {
+        if (product.getName() == null || product.getName().isBlank() ||
+            product.getDescription() == null || product.getDescription().isBlank() ||
+            product.getPrice() <= 0 || product.getCategory() == null || product.getCategory().isBlank()) {
+            throw new ValidationException("Invalid product data");
+        }
+        return productRepository.save(product);
     }
 
-    public List<Product> getAll() {
-        return productRepository.findAll();
+    public List<Product> getAllProducts(String category, Double minPrice, Double maxPrice) {
+        if (category != null && minPrice != null && maxPrice != null) {
+            return productRepository.findByCategoryContainingIgnoreCaseAndPriceBetween(category, minPrice, maxPrice);
+        } else if (category != null) {
+            return productRepository.findByCategoryContainingIgnoreCase(category);
+        } else if (minPrice != null && maxPrice != null) {
+            return productRepository.findByPriceBetween(minPrice, maxPrice);
+        } else {
+            return productRepository.findAll();
+        }
     }
 
-    public Product get(Long id) {
-        return productRepository.findById(id).orElseThrow();
+    public Product getProductById(Long id) {
+        return productRepository.findById(id).orElseThrow(() -> new RuntimeException("Product not found"));
     }
 
-    public Product update(Long id, Product p) {
-        p.setId(id);
-        return productRepository.save(p);
+    public Product updateProduct(Long id, Product updated) {
+        Product product = getProductById(id);
+        product.setName(updated.getName());
+        product.setDescription(updated.getDescription());
+        product.setPrice(updated.getPrice());
+        product.setCategory(updated.getCategory());
+        product.setStockQuantity(updated.getStockQuantity());
+        product.setImageUrl(updated.getImageUrl());
+        return productRepository.save(product);
     }
 
-    public void delete(Long id) {
+    public void deleteProduct(Long id) {
         productRepository.deleteById(id);
-    }
-
-    public void reduceStock(Long id, int qty) {
-        Product p = get(id);
-        if (p.getStockQuantity() < qty) throw new RuntimeException("Out of stock");
-        p.setStockQuantity(p.getStockQuantity() - qty);
-        productRepository.save(p);
     }
 }

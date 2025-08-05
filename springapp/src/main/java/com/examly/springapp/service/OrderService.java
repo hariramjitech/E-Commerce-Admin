@@ -1,22 +1,51 @@
 package com.examly.springapp.service;
 
-import com.examly.springapp.dto.*;
+import com.examly.springapp.dto.OrderCreateRequest;
+import com.examly.springapp.dto.OrderItemCreateRequest;
+import com.examly.springapp.dto.StatusUpdateRequest;
 import com.examly.springapp.model.*;
-import com.examly.springapp.repository.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.examly.springapp.repository.OrderRepository;
+import com.examly.springapp.repository.ProductRepository;
+import jakarta.validation.ValidationException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
+@RequiredArgsConstructor
 public class OrderService {
-    @Autowired private OrderRepository orderRepo;
-    @Autowired private ProductService productService;
 
-    public Order create(OrderCreateRequest request) {
-        List<OrderItem> items = new ArrayList<>();
-        double total = 0;
+    private final OrderRepository orderRepository;
+    private final ProductRepository productRepository;
+
+    private static final Set<String> VALID_STATUSES = Set.of("PENDING", "PROCESSING", "SHIPPED", "DELIVERED");
+
+    public Order createOrder(OrderCreateRequest request) {
+        List<OrderItem> orderItems = new ArrayList<>();
+        double total = 0.0;
+
+        for (OrderItemCreateRequest itemReq : request.getOrderItems()) {
+            Product product = productRepository.findById(itemReq.getProductId())
+                    .orElseThrow(() -> new ValidationException("Product not found"));
+
+            if (product.getStockQuantity() < itemReq.getQuantity()) {
+                throw new ValidationException("Insufficient stock");
+            }
+
+            product.setStockQuantity(product.getStockQuantity() - itemReq.getQuantity());
+            productRepository.save(product);
+
+            double price = product.getPrice();
+            OrderItem item = OrderItem.builder()
+                    .product(product)
+                    .quantity(itemReq.getQuantity())
+                    .priceAtPurchase(price)
+                    .build();
+            total += price * itemReq.getQuantity();
+            orderItems.add(item);
+        }
 
         Order order = Order.builder()
                 .customerName(request.getCustomerName())
@@ -24,39 +53,33 @@ public class OrderService {
                 .shippingAddress(request.getShippingAddress())
                 .orderDate(LocalDateTime.now())
                 .status("PENDING")
+                .orderItems(new ArrayList<>()) // temp for circular ref fix
+                .totalAmount(total)
                 .build();
 
-        for (OrderItemCreateRequest item : request.getOrderItems()) {
-            Product p = productService.get(item.getProductId());
-            productService.reduceStock(p.getId(), item.getQuantity());
-            items.add(OrderItem.builder()
-                    .product(p)
-                    .order(order)
-                    .quantity(item.getQuantity())
-                    .priceAtPurchase(p.getPrice())
-                    .build());
-            total += p.getPrice() * item.getQuantity();
+        Order savedOrder = orderRepository.save(order);
+        for (OrderItem item : orderItems) {
+            item.setOrder(savedOrder);
         }
-        order.setOrderItems(items);
-        order.setTotalAmount(total);
-        return orderRepo.save(order);
+        savedOrder.setOrderItems(orderItems);
+        return orderRepository.save(savedOrder);
     }
 
-    public List<Order> getAll() {
-        return orderRepo.findAll();
+    public List<Order> getAllOrders() {
+        return orderRepository.findAll();
     }
 
-    public Order get(Long id) {
-        return orderRepo.findById(id).orElseThrow();
+    public Order getOrderById(Long id) {
+        return orderRepository.findById(id).orElseThrow(() -> new RuntimeException("Order not found"));
     }
 
-    public Order updateStatus(Long id, String status) {
-        Order order = get(id);
-        order.setStatus(status);
-        return orderRepo.save(order);
-    }
-
-    public void delete(Long id) {
-        orderRepo.deleteById(id);
+    public Order updateStatus(Long id, StatusUpdateRequest statusRequest) {
+        Order order = getOrderById(id);
+        String newStatus = statusRequest.getStatus().toUpperCase();
+        if (!VALID_STATUSES.contains(newStatus)) {
+            throw new ValidationException("Invalid status");
+        }
+        order.setStatus(newStatus);
+        return orderRepository.save(order);
     }
 }

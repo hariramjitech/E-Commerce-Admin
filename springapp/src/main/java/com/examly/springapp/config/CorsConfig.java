@@ -1,4 +1,3 @@
-// CorsConfig.java
 package com.examly.springapp.config;
 
 import org.springframework.context.annotation.Bean;
@@ -13,8 +12,8 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOriginPatterns("*")  // Important for dynamic origins
-                        .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE")
+                        .allowedOrigins("http://localhost:8081") // React frontend port
+                        .allowedMethods("*")
                         .allowedHeaders("*")
                         .allowCredentials(true);
             }
