@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Search, Filter, X, Edit2, Trash2, Save, XCircle, Package, AlertCircle, CheckCircle } from 'lucide-react';
-import './ProductList.css';
+import '../style/ProductList.css';
 
 // Mock API functions - replace with your actual API
 const mockAPI = {
