@@ -1,7 +1,8 @@
 // src/utils/api.js
 import axios from 'axios';
+const BASE_URL = 'https://ide-becabbbccbbfdfebebacdbf.premiumproject.examly.io/proxy/8080/api';
 
-const BASE_URL = 'https://8080-becabbbccbbfdfebdfdfccaeabdfcdafc.premiumproject.examly.io/api';
+// const BASE_URL = 'http://localhost:8080/api';
 
 // 🔁 Products
 export const fetchProducts = (filters = {}) => {
