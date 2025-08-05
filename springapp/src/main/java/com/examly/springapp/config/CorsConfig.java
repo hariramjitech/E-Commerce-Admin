@@ -12,9 +12,13 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOrigins("http://localhost:8081") // frontend port
+                        .allowedOrigins(
+                            "http://localhost:8081", 
+                            "https://8081-becabbbccbbfdfebebacdbf.premiumproject.examly.io"
+                        )
                         .allowedMethods("*")
-                        .allowedHeaders("*");
+                        .allowedHeaders("*")
+                        .allowCredentials(true); // Optional but good for cookies/auth
             }
         };
     }
