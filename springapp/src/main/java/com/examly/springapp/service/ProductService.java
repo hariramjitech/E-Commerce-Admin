@@ -13,15 +13,23 @@ import java.util.List;
 public class ProductService {
     public List<Product> createProductsBulk(List<Product> products) {
         for (Product product : products) {
+            System.out.println("Attempting to save product: " + product);
             if (product.getName() == null || product.getName().isBlank() ||
                 product.getDescription() == null || product.getDescription().isBlank() ||
                 product.getPrice() <= 0 ||
                 product.getCategory() == null || product.getCategory().isBlank() ||
                 product.getStockQuantity() <= 0) {
-                throw new ValidationException("Invalid product data in bulk insert");
+                System.out.println("Validation failed for product: " + product);
+                throw new ValidationException("Invalid product data in bulk insert: " + product);
             }
         }
-        return productRepository.saveAll(products);
+        try {
+            return productRepository.saveAll(products);
+        } catch (Exception e) {
+            System.out.println("Exception during saveAll: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     private final ProductRepository productRepository;
