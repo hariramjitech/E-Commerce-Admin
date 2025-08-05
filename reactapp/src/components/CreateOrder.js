@@ -89,26 +89,26 @@ const CreateOrder = () => {
     }, 3000);
   };
 
-  const addItem = (product) => {
-    if (!order.orderItems.find(item => item.productId === product.id)) {
-      if (product.stockQuantity === 0) {
-        showMessage('❌ Product is out of stock', 'error');
-        return;
-      }
-      setOrder({
-        ...order,
-        orderItems: [...order.orderItems, { 
-          productId: product.id, 
-          quantity: 1,
-          product: product
-        }]
-      });
-      // Use 'success' type but don't navigate automatically
-      showMessage(`✅ ${product.name} added to order`, 'success');
-    } else {
-      showMessage('⚠️ Product already in order', 'warning');
+const addItem = (product) => {
+  if (!order.orderItems.find(item => item.productId === product.id)) {
+    if (product.stockQuantity === 0) {
+      showMessage('❌ Product is out of stock', 'error');
+      return;
     }
-  };
+    setOrder({
+      ...order,
+      orderItems: [...order.orderItems, { 
+        productId: product.id, 
+        quantity: 1
+        // ✅ Removed product: product
+      }]
+    });
+    showMessage(`✅ ${product.name} added to order`, 'success');
+  } else {
+    showMessage('⚠️ Product already in order', 'warning');
+  }
+};
+
 
   const updateQuantity = (productId, qty) => {
     const quantity = parseInt(qty);
@@ -168,56 +168,59 @@ const CreateOrder = () => {
   };
 
   const handleSubmit = async () => {
-    if (order.orderItems.length === 0) {
-      showMessage("❌ Please select at least one product", 'error');
-      return;
-    }
+  if (order.orderItems.length === 0) {
+    showMessage("❌ Please select at least one product", 'error');
+    return;
+  }
 
-    if (!order.customerName.trim() || !order.customerEmail.trim() || !order.shippingAddress.trim()) {
-      showMessage("❌ Please fill in all required fields", 'error');
-      return;
-    }
+  if (!order.customerName.trim() || !order.customerEmail.trim() || !order.shippingAddress.trim()) {
+    showMessage("❌ Please fill in all required fields", 'error');
+    return;
+  }
 
-    const orderData = {
-      customerName: order.customerName.trim(),
-      customerEmail: order.customerEmail.trim(),
-      shippingAddress: order.shippingAddress.trim(),
-      orderItems: order.orderItems.map(item => ({
-        productId: parseInt(item.productId),
-        quantity: parseInt(item.quantity)
-      }))
-    };
-
-    try {
-      setSubmitting(true);
-      await createOrder(orderData);
-      // Changed to 'success' and explicitly request navigation
-      showMessage("✅ Order created successfully!", 'success', true);
-      
-      // Reset form after successful submission
-      setTimeout(() => {
-        setOrder({
-          customerName: '',
-          customerEmail: '',
-          shippingAddress: '',
-          orderItems: []
-        });
-      }, 2000);
-    } catch (err) {
-      console.error('Order creation error:', err);
-      
-      if (err?.response?.status === 400) {
-        const errorMessage = err?.response?.data?.message || 
-                            err?.response?.data?.error || 
-                            '❌ Invalid order data. Please check all fields.';
-        showMessage(errorMessage, 'error');
-      } else {
-        showMessage('❌ Order creation failed. Please try again.', 'error');
-      }
-    } finally {
-      setSubmitting(false);
-    }
+  const orderData = {
+    customerName: order.customerName.trim(),
+    customerEmail: order.customerEmail.trim(),
+    shippingAddress: order.shippingAddress.trim(),
+    orderItems: order.orderItems.map(item => ({
+      productId: parseInt(item.productId),  // Must be a number
+      quantity: parseInt(item.quantity)     // Must be a number
+    }))
   };
+
+  console.log("Sending order:", JSON.stringify(orderData, null, 2));
+
+  try {
+    setSubmitting(true);
+    const response = await createOrder(orderData);
+
+    showMessage("✅ Order created successfully!", 'success', true);
+
+    setTimeout(() => {
+      setOrder({
+        customerName: '',
+        customerEmail: '',
+        shippingAddress: '',
+        orderItems: []
+      });
+    }, 2000);
+  } catch (err) {
+    console.error('Order creation error:', err);
+    console.log('Backend response:', err?.response?.data);
+
+    if (err?.response?.status === 400) {
+      const errorMessage = err?.response?.data?.message ||
+                          err?.response?.data?.error ||
+                          '❌ Invalid order data. Please check all fields.';
+      showMessage(errorMessage, 'error');
+    } else {
+      showMessage('❌ Order creation failed. Please try again.', 'error');
+    }
+  } finally {
+    setSubmitting(false);
+  }
+};
+
 
   if (loading) {
     return (
