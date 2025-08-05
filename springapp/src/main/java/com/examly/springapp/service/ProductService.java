@@ -11,6 +11,18 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class ProductService {
+    public List<Product> createProductsBulk(List<Product> products) {
+        for (Product product : products) {
+            if (product.getName() == null || product.getName().isBlank() ||
+                product.getDescription() == null || product.getDescription().isBlank() ||
+                product.getPrice() <= 0 ||
+                product.getCategory() == null || product.getCategory().isBlank() ||
+                product.getStockQuantity() <= 0) {
+                throw new ValidationException("Invalid product data in bulk insert");
+            }
+        }
+        return productRepository.saveAll(products);
+    }
 
     private final ProductRepository productRepository;
 
@@ -53,7 +65,5 @@ public class ProductService {
     public void deleteProduct(Long id) {
         productRepository.deleteById(id);
     }
-    public List<Product> createProductsBulk(List<Product> products) {
-    return productRepository.saveAll(products);
-}
+    
 }
