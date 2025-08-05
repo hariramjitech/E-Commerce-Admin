@@ -12,37 +12,31 @@ public class ProductService {
     @Autowired
     private ProductRepository productRepository;
 
-    public Product create(Product product) {
-        if (product.getName() == null || product.getName().isBlank()
-            || product.getPrice() == null || product.getPrice() < 0) {
-            throw new IllegalArgumentException("Invalid product data");
-        }
-        return productRepository.save(product);
+    public Product create(Product p) {
+        return productRepository.save(p);
     }
 
-    public List<Product> getFiltered(String category, Double minPrice, Double maxPrice) {
-        List<Product> all = productRepository.findAll();
-        return all.stream().filter(p -> {
-            boolean ok = true;
-            if (category != null && !category.isBlank())
-                ok &= p.getCategory() != null && p.getCategory().equalsIgnoreCase(category);
-            if (minPrice != null)
-                ok &= p.getPrice() != null && p.getPrice() >= minPrice;
-            if (maxPrice != null)
-                ok &= p.getPrice() != null && p.getPrice() <= maxPrice;
-            return ok;
-        }).toList();
+    public List<Product> getAll() {
+        return productRepository.findAll();
     }
 
     public Product get(Long id) {
-        return productRepository.findById(id).orElseThrow(() -> new RuntimeException("Product not found"));
+        return productRepository.findById(id).orElseThrow();
     }
 
-    public void updateStock(Long productId, int quantityChange) {
-        Product product = get(productId);
-        int newStock = product.getStockQuantity() + quantityChange;
-        if (newStock < 0) throw new RuntimeException("Insufficient stock");
-        product.setStockQuantity(newStock);
-        productRepository.save(product);
+    public Product update(Long id, Product p) {
+        p.setId(id);
+        return productRepository.save(p);
+    }
+
+    public void delete(Long id) {
+        productRepository.deleteById(id);
+    }
+
+    public void reduceStock(Long id, int qty) {
+        Product p = get(id);
+        if (p.getStockQuantity() < qty) throw new RuntimeException("Out of stock");
+        p.setStockQuantity(p.getStockQuantity() - qty);
+        productRepository.save(p);
     }
 }

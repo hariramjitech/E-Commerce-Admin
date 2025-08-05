@@ -3,7 +3,6 @@ package com.examly.springapp.controller;
 import com.examly.springapp.dto.OrderCreateRequest;
 import com.examly.springapp.model.Order;
 import com.examly.springapp.service.OrderService;
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,28 +13,27 @@ import java.util.Map;
 @RequestMapping("/api/orders")
 @CrossOrigin("*")
 public class OrderController {
-
     @Autowired
-    private OrderService orderService;
+    private OrderService service;
 
-    @PostMapping
-    public Order create(@Valid @RequestBody OrderCreateRequest request) {
-        return orderService.createOrder(request);
+    @PostMapping public Order create(@RequestBody OrderCreateRequest request) {
+        return service.create(request);
+    }
+
+    @GetMapping public List<Order> all() {
+        return service.getAll();
+    }
+
+    @GetMapping("/{id}") public Order get(@PathVariable Long id) {
+        return service.get(id);
     }
 
     @PatchMapping("/{id}/status")
     public Order updateStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        String status = body.get("status");
-        return orderService.updateStatus(id, status);
+        return service.updateStatus(id, body.get("status"));
     }
 
-    @GetMapping
-    public List<Order> getAll() {
-        return orderService.getAll();
-    }
-
-    @GetMapping("/{id}")
-    public Order getById(@PathVariable Long id) {
-        return orderService.getById(id);
+    @DeleteMapping("/{id}") public void delete(@PathVariable Long id) {
+        service.delete(id);
     }
 }

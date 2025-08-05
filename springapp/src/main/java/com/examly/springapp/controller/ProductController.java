@@ -11,35 +11,26 @@ import java.util.List;
 @RequestMapping("/api/products")
 @CrossOrigin("*")
 public class ProductController {
-
     @Autowired
-    private ProductService productService;
+    private ProductService service;
 
-    @PostMapping
-    public Product create(@RequestBody Product product) {
-        try {
-            return productService.create(product);
-        } catch (IllegalArgumentException ex) {
-            throw new RuntimeException("Invalid product data");
-        }
+    @PostMapping public Product create(@RequestBody Product p) {
+        return service.create(p);
     }
 
-    @GetMapping
-    public List<Product> getFiltered(
-            @RequestParam(required = false) String category,
-            @RequestParam(required = false) Double minPrice,
-            @RequestParam(required = false) Double maxPrice) {
-        return productService.getFiltered(category, minPrice, maxPrice);
+    @GetMapping public List<Product> all() {
+        return service.getAll();
     }
 
-    @GetMapping("/{id}")
-    public Product get(@PathVariable Long id) {
-        return productService.get(id);
+    @GetMapping("/{id}") public Product get(@PathVariable Long id) {
+        return service.get(id);
     }
 
-    @PutMapping("/{id}")
-    public Product updateStock(@PathVariable Long id, @RequestParam int quantity) {
-        productService.updateStock(id, quantity);
-        return productService.get(id);
+    @PutMapping("/{id}") public Product update(@PathVariable Long id, @RequestBody Product p) {
+        return service.update(id, p);
+    }
+
+    @DeleteMapping("/{id}") public void delete(@PathVariable Long id) {
+        service.delete(id);
     }
 }

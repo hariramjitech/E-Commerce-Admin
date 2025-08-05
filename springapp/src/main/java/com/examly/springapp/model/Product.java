@@ -4,11 +4,10 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Getter
-@Setter
+@Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -16,8 +15,8 @@ public class Product {
 
     private String name;
     private String description;
-    private Double price;
+    private double price;
     private String category;
-    private Integer stockQuantity;
+    private int stockQuantity;
     private String imageUrl;
 }

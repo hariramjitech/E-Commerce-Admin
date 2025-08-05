@@ -1,3 +1,4 @@
+// CorsConfig.java
 package com.examly.springapp.config;
 
 import org.springframework.context.annotation.Bean;
@@ -12,11 +13,8 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOrigins(
-                                "http://localhost:8081",
-                                "https://8081-becabbbccbbfdfebebacdbf.premiumproject.examly.io"
-                        )
-                        .allowedMethods("*")
+                        .allowedOriginPatterns("*")  // Important for dynamic origins
+                        .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE")
                         .allowedHeaders("*")
                         .allowCredentials(true);
             }
