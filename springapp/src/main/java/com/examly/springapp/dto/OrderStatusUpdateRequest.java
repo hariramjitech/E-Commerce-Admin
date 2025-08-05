@@ -7,7 +7,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class StatusUpdateRequest {
+public class OrderStatusUpdateRequest {
     @NotBlank
     private String status;
 }

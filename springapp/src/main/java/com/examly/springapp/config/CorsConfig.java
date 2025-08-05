@@ -12,7 +12,7 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOriginPatterns("http://localhost:8081") // React frontend origin
+                        .allowedOriginPatterns("http://localhost:8081") // ✅ Use pattern instead of "*"
                         .allowedMethods("*")
                         .allowedHeaders("*")
                         .allowCredentials(true);
