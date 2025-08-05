@@ -49,7 +49,7 @@ public class OrderService {
                     product.getId(),
                     i.getQuantity(),
                     product.getPrice(),
-                    order
+                    order, product
             );
         }).collect(Collectors.toList());
 

@@ -6,7 +6,7 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
-
+@Builder
 @Entity
 @Table(name = "orders") // ✅ avoid using SQL reserved keyword "order"
 @Data
@@ -28,4 +28,6 @@ public class Order {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     @JsonManagedReference
     private List<OrderItem> orderItems;
+
+    
 }

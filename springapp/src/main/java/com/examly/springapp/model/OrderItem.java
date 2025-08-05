@@ -8,6 +8,7 @@ import lombok.*;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class OrderItem {
 
     @Id
@@ -22,4 +23,11 @@ public class OrderItem {
     @JoinColumn(name = "order_id")
     @JsonBackReference
     private Order order;
+
+    @ManyToOne
+    @JoinColumn(name = "product_id")
+    private Product product;
+
+    
+    
 }
