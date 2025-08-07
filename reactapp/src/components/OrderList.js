@@ -169,3 +169,60 @@ const OrderList = () => {
     </div>
   );
 };
+
+// Demo App to show both components
+const App = () => {
+  const [currentView, setCurrentView] = useState('list');
+  const [selectedOrderId, setSelectedOrderId] = useState(1);
+
+  const viewOrder = (orderId) => {
+    setSelectedOrderId(orderId);
+    setCurrentView('detail');
+  };
+
+  return (
+    <div>
+      {/* Navigation */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center space-x-4">
+              <h1 className="text-xl font-bold text-gray-900">Order Management</h1>
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setCurrentView('list')}
+                className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                  currentView === 'list' 
+                    ? 'bg-blue-600 text-white' 
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Order List
+              </button>
+              <button
+                onClick={() => setCurrentView('detail')}
+                className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                  currentView === 'detail' 
+                    ? 'bg-blue-600 text-white' 
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Order Detail
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      {currentView === 'list' ? (
+        <OrderList onViewOrder={viewOrder} />
+      ) : (
+        <OrderDetail orderId={selectedOrderId} />
+      )}
+    </div>
+  );
+};
+
+export default App;
