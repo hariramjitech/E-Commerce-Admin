@@ -1,7 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import { createOrder, fetchProducts } from '../utils/api';
-import { useNavigate } from 'react-router-dom';
-import '../style/CreateOrder.css';
+import React, { useState, useEffect } from 'react';
 
 const CreateOrder = () => {
   const [order, setOrder] = useState({
@@ -10,7 +7,50 @@ const CreateOrder = () => {
     shippingAddress: '',
     orderItems: []
   });
-  const [products, setProducts] = useState([]);
+  
+  const [products] = useState([
+    {
+      id: 1,
+      name: "Premium Wireless Headphones",
+      description: "High-quality noise-cancelling wireless headphones with 30-hour battery life",
+      price: 8999,
+      category: "Electronics",
+      stockQuantity: 15
+    },
+    {
+      id: 2,
+      name: "Smart Fitness Watch",
+      description: "Advanced fitness tracking with heart rate monitor and GPS",
+      price: 12999,
+      category: "Electronics",
+      stockQuantity: 8
+    },
+    {
+      id: 3,
+      name: "Organic Cotton T-Shirt",
+      description: "Soft, comfortable organic cotton t-shirt in various colors",
+      price: 899,
+      category: "Clothing",
+      stockQuantity: 25
+    },
+    {
+      id: 4,
+      name: "Coffee Bean Blend",
+      description: "Premium arabica coffee beans, medium roast",
+      price: 599,
+      category: "Food",
+      stockQuantity: 0
+    },
+    {
+      id: 5,
+      name: "Yoga Mat",
+      description: "Non-slip eco-friendly yoga mat with carrying strap",
+      price: 1299,
+      category: "Sports",
+      stockQuantity: 12
+    }
+  ]);
+  
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -18,29 +58,18 @@ const CreateOrder = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [sortBy, setSortBy] = useState('name-asc');
-  const navigate = useNavigate();
 
   useEffect(() => {
-    loadProducts();
+    // Simulate loading
+    setTimeout(() => {
+      setLoading(false);
+      setFilteredProducts(products);
+    }, 1000);
   }, []);
 
   useEffect(() => {
     applyFiltersAndSorting();
   }, [products, searchTerm, categoryFilter, sortBy]);
-
-  const loadProducts = async () => {
-    try {
-      setLoading(true);
-      const res = await fetchProducts();
-      setProducts(res.data);
-      setFilteredProducts(res.data);
-    } catch (error) {
-      console.error('Error loading products:', error);
-      showMessage('❌ Failed to load products', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const applyFiltersAndSorting = () => {
     let result = [...products];
@@ -82,33 +111,27 @@ const CreateOrder = () => {
     setAlert({ show: true, message: text, type });
     setTimeout(() => {
       setAlert({ show: false, message: '', type: '' });
-      // Only navigate when explicitly requested
-      if (shouldNavigate) {
-        setTimeout(() => navigate('/orders'), 300);
-      }
     }, 3000);
   };
 
-const addItem = (product) => {
-  if (!order.orderItems.find(item => item.productId === product.id)) {
-    if (product.stockQuantity === 0) {
-      showMessage('❌ Product is out of stock', 'error');
-      return;
+  const addItem = (product) => {
+    if (!order.orderItems.find(item => item.productId === product.id)) {
+      if (product.stockQuantity === 0) {
+        showMessage('❌ Product is out of stock', 'error');
+        return;
+      }
+      setOrder({
+        ...order,
+        orderItems: [...order.orderItems, { 
+          productId: product.id, 
+          quantity: 1
+        }]
+      });
+      showMessage(`✅ ${product.name} added to order`, 'success');
+    } else {
+      showMessage('⚠️ Product already in order', 'warning');
     }
-    setOrder({
-      ...order,
-      orderItems: [...order.orderItems, { 
-        productId: product.id, 
-        quantity: 1
-        // ✅ Removed product: product
-      }]
-    });
-    showMessage(`✅ ${product.name} added to order`, 'success');
-  } else {
-    showMessage('⚠️ Product already in order', 'warning');
-  }
-};
-
+  };
 
   const updateQuantity = (productId, qty) => {
     const quantity = parseInt(qty);
@@ -168,81 +191,63 @@ const addItem = (product) => {
   };
 
   const handleSubmit = async () => {
-  if (order.orderItems.length === 0) {
-    showMessage("❌ Please select at least one product", 'error');
-    return;
-  }
-
-  if (!order.customerName.trim() || !order.customerEmail.trim() || !order.shippingAddress.trim()) {
-    showMessage("❌ Please fill in all required fields", 'error');
-    return;
-  }
-
-  const orderData = {
-    customerName: order.customerName.trim(),
-    customerEmail: order.customerEmail.trim(),
-    shippingAddress: order.shippingAddress.trim(),
-    orderItems: order.orderItems.map(item => ({
-      productId: parseInt(item.productId),  // Must be a number
-      quantity: parseInt(item.quantity)     // Must be a number
-    }))
-  };
-
-  console.log("Sending order:", JSON.stringify(orderData, null, 2));
-
-  try {
-    setSubmitting(true);
-    const response = await createOrder(orderData);
-
-    showMessage("✅ Order created successfully!", 'success', true);
-
-    setTimeout(() => {
-      setOrder({
-        customerName: '',
-        customerEmail: '',
-        shippingAddress: '',
-        orderItems: []
-      });
-    }, 2000);
-  } catch (err) {
-    console.error('Order creation error:', err);
-    console.log('Backend response:', err?.response?.data);
-
-    if (err?.response?.status === 400) {
-      const errorMessage = err?.response?.data?.message ||
-                          err?.response?.data?.error ||
-                          '❌ Invalid order data. Please check all fields.';
-      showMessage(errorMessage, 'error');
-    } else {
-      showMessage('❌ Order creation failed. Please try again.', 'error');
+    if (order.orderItems.length === 0) {
+      showMessage("❌ Please select at least one product", 'error');
+      return;
     }
-  } finally {
-    setSubmitting(false);
-  }
-};
 
+    if (!order.customerName.trim() || !order.customerEmail.trim() || !order.shippingAddress.trim()) {
+      showMessage("❌ Please fill in all required fields", 'error');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      showMessage("✅ Order created successfully!", 'success', true);
+      
+      setTimeout(() => {
+        setOrder({
+          customerName: '',
+          customerEmail: '',
+          shippingAddress: '',
+          orderItems: []
+        });
+      }, 2000);
+    } catch (err) {
+      showMessage('❌ Order creation failed. Please try again.', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (loading) {
     return (
-      <div className="loading-container">
-        <div className="loading-content">
-          <div className="loading-spinner"></div>
-          <p className="loading-text">Loading products...</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-2 border-gray-200 border-t-blue-600 rounded-full mx-auto mb-4 animate-spin"></div>
+          <p className="text-gray-600 text-lg">Loading products...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="page-container">
+    <div className="min-h-screen bg-gray-50">
       {/* Alert System */}
       {alert.show && (
-        <div className="alert-overlay">
-          <div className={`alert-window ${alert.type}`}>
-            <div className="alert-content">
-              <span className="alert-message">{alert.message}</span>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className={`bg-white rounded-lg shadow-2xl max-w-md w-full p-6 transform scale-100 transition-all duration-300 ${
+            alert.type === 'success' ? 'border-l-4 border-green-500' :
+            alert.type === 'error' ? 'border-l-4 border-red-500' :
+            alert.type === 'warning' ? 'border-l-4 border-yellow-500' :
+            'border-l-4 border-blue-500'
+          }`}>
+            <div className="flex justify-between items-start">
+              <span className="text-gray-800 font-medium flex-1">{alert.message}</span>
               <button 
-                className="alert-close"
+                className="text-gray-400 text-xl font-bold hover:text-gray-600 transition-colors ml-4 p-0 leading-none"
                 onClick={() => setAlert({ show: false, message: '', type: '' })}
               >
                 ×
@@ -252,19 +257,19 @@ const addItem = (product) => {
         </div>
       )}
 
-      <div className="main-container">
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="header-card">
-          <div className="header-content">
-            <div className="header-info">
-              <h1>Create New Order</h1>
-              <p>Add products and customer details to create an order</p>
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-1">Create New Order</h1>
+              <p className="text-gray-600">Add products and customer details to create an order</p>
             </div>
-            <div className="header-summary">
-              <div className="summary-badge items">
+            <div className="flex gap-3">
+              <div className="px-4 py-2 bg-blue-50 text-blue-800 rounded-full font-semibold text-sm">
                 {getTotalItems()} items
               </div>
-              <div className="summary-badge total">
+              <div className="px-4 py-2 bg-green-50 text-green-800 rounded-full font-semibold text-sm">
                 {formatCurrency(getTotalAmount())}
               </div>
             </div>
@@ -272,42 +277,42 @@ const addItem = (product) => {
         </div>
 
         {/* Customer Information */}
-        <div className="form-section">
-          <div className="section-header">
-            <div className="section-number">
-              <span>1</span>
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+          <div className="flex items-center mb-6">
+            <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center mr-3">
+              <span className="text-blue-600 font-bold text-sm">1</span>
             </div>
-            <h2 className="section-title">Customer Information</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Customer Information</h2>
           </div>
-          <div className="customer-grid">
-            <div className="form-group">
-              <label className="form-label">Customer Name *</label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="flex flex-col">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Customer Name *</label>
               <input
                 type="text"
                 value={order.customerName}
                 onChange={e => setOrder({ ...order, customerName: e.target.value })}
-                className="form-input"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm transition-all focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-100 bg-white"
                 placeholder="Enter customer name"
                 required
               />
             </div>
-            <div className="form-group">
-              <label className="form-label">Customer Email *</label>
+            <div className="flex flex-col">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Customer Email *</label>
               <input
                 type="email"
                 value={order.customerEmail}
                 onChange={e => setOrder({ ...order, customerEmail: e.target.value })}
-                className="form-input"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm transition-all focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-100 bg-white"
                 placeholder="customer@example.com"
                 required
               />
             </div>
-            <div className="form-group full-width">
-              <label className="form-label">Shipping Address *</label>
+            <div className="flex flex-col sm:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Shipping Address *</label>
               <textarea
                 value={order.shippingAddress}
                 onChange={e => setOrder({ ...order, shippingAddress: e.target.value })}
-                className="form-textarea"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm transition-all focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-100 bg-white resize-vertical"
                 rows="3"
                 placeholder="Enter complete shipping address"
                 required
@@ -317,35 +322,35 @@ const addItem = (product) => {
         </div>
 
         {/* Product Selection */}
-        <div className="form-section">
-          <div className="section-header">
-            <div className="section-number">
-              <span>2</span>
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+          <div className="flex items-center mb-6">
+            <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center mr-3">
+              <span className="text-blue-600 font-bold text-sm">2</span>
             </div>
-            <h2 className="section-title">Select Products</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Select Products</h2>
           </div>
           
           {/* Filters */}
-          <div className="filters-section">
-            <div className="filters-grid">
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <input
                 type="text"
                 placeholder="Search products..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="filter-input"
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white transition-all focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-100"
               />
               <input
                 type="text"
                 placeholder="Filter by category..."
                 value={categoryFilter}
                 onChange={e => setCategoryFilter(e.target.value)}
-                className="filter-input"
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white transition-all focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-100"
               />
               <select 
                 value={sortBy} 
                 onChange={e => setSortBy(e.target.value)}
-                className="filter-select"
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white transition-all focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-100"
               >
                 <option value="name-asc">Name (A-Z)</option>
                 <option value="name-desc">Name (Z-A)</option>
@@ -357,7 +362,7 @@ const addItem = (product) => {
               <button 
                 type="button" 
                 onClick={clearFilters} 
-                className="clear-filters-btn"
+                className="px-4 py-2 bg-red-500 text-white rounded-lg font-medium cursor-pointer transition-colors hover:bg-red-600"
               >
                 Clear Filters
               </button>
@@ -365,43 +370,49 @@ const addItem = (product) => {
           </div>
 
           {/* Products Grid */}
-          <div className="products-grid">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
             {filteredProducts.length > 0 ? (
               filteredProducts.map(product => (
-                <div key={product.id} className="product-card">
-                  <div className="product-info">
-                    <h3 className="product-name">{product.name}</h3>
-                    <p className="product-description">{product.description}</p>
-                    <div className="product-badges">
-                      <span className="badge price">
+                <div key={product.id} className="border border-gray-200 rounded-lg p-6 bg-white transition-all hover:shadow-lg hover:-translate-y-0.5">
+                  <div className="mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{product.name}</h3>
+                    <p className="text-gray-600 text-sm mb-3 line-clamp-2 leading-6 overflow-hidden" style={{
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical'
+                    }}>{product.description}</p>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <span className="px-3 py-1 bg-green-50 text-green-800 rounded-full text-sm font-medium">
                         {formatCurrency(product.price)}
                       </span>
-                      <span className="badge category">
+                      <span className="px-3 py-1 bg-blue-50 text-blue-800 rounded-full text-sm font-medium">
                         {product.category}
                       </span>
-                      <span className={`badge ${
-                        product.stockQuantity === 0 ? 'out-of-stock' : 'stock'
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        product.stockQuantity === 0 
+                          ? 'bg-red-50 text-red-800' 
+                          : 'bg-gray-50 text-gray-700'
                       }`}>
                         {product.stockQuantity === 0 ? 'Out of Stock' : `${product.stockQuantity} in stock`}
                       </span>
                     </div>
                   </div>
-                  <div className="product-actions">
+                  <div className="flex justify-end">
                     {product.stockQuantity > 0 ? (
                       <button 
                         type="button" 
                         onClick={() => addItem(product)}
                         disabled={order.orderItems.some(item => item.productId === product.id)}
-                        className={`btn ${
+                        className={`px-4 py-2 rounded-lg font-medium text-sm cursor-pointer transition-all inline-flex items-center justify-center ${
                           order.orderItems.some(item => item.productId === product.id)
-                            ? 'btn-added'
-                            : 'btn-primary'
+                            ? 'bg-gray-100 text-gray-600 cursor-not-allowed'
+                            : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md hover:-translate-y-px'
                         }`}
                       >
                         {order.orderItems.some(item => item.productId === product.id) ? 'Added ✓' : 'Add to Order'}
                       </button>
                     ) : (
-                      <button type="button" className="btn btn-disabled" disabled>
+                      <button type="button" className="px-4 py-2 bg-gray-100 text-gray-400 rounded-lg font-medium text-sm cursor-not-allowed" disabled>
                         Out of Stock
                       </button>
                     )}
@@ -409,64 +420,64 @@ const addItem = (product) => {
                 </div>
               ))
             ) : (
-              <div className="empty-state">
-                <div className="empty-state-icon">📦</div>
-                <h3>No products found</h3>
-                <p>Try adjusting your search or filters</p>
+              <div className="col-span-full text-center py-12">
+                <div className="text-6xl mb-4">📦</div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
+                <p className="text-gray-600">Try adjusting your search or filters</p>
               </div>
             )}
           </div>
         </div>
 
         {/* Order Summary */}
-        <div className="form-section">
-          <div className="section-header">
-            <div className="section-number">
-              <span>3</span>
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+          <div className="flex items-center mb-6">
+            <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center mr-3">
+              <span className="text-blue-600 font-bold text-sm">3</span>
             </div>
-            <h2 className="section-title">Order Summary ({order.orderItems.length} items)</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Order Summary ({order.orderItems.length} items)</h2>
           </div>
           
           {order.orderItems.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-state-icon">🛒</div>
-              <h3>No items selected yet</h3>
-              <p>Add products from above to create your order</p>
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">🛒</div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No items selected yet</h3>
+              <p className="text-gray-600">Add products from above to create your order</p>
             </div>
           ) : (
-            <div className="order-items">
+            <div className="flex flex-col gap-4">
               {order.orderItems.map(item => {
                 const product = products.find(p => p.id === item.productId);
                 if (!product) return null;
                 
                 return (
-                  <div key={item.productId} className="order-item">
-                    <div className="item-content">
-                      <div className="item-info">
-                        <h4>{product.name}</h4>
-                        <p>{product.description}</p>
-                        <span className="item-price">{formatCurrency(product.price)} each</span>
+                  <div key={item.productId} className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-gray-900 mb-1">{product.name}</h4>
+                        <p className="text-gray-600 text-sm mb-2">{product.description}</p>
+                        <span className="text-green-600 font-medium">{formatCurrency(product.price)} each</span>
                       </div>
-                      <div className="item-controls">
-                        <div className="quantity-control">
-                          <label className="quantity-label">Qty:</label>
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <label className="text-sm font-medium text-gray-700">Qty:</label>
                           <input
                             type="number"
                             min="1"
                             max={product.stockQuantity}
                             value={item.quantity}
                             onChange={e => updateQuantity(item.productId, e.target.value)}
-                            className="quantity-input"
+                            className="w-20 px-2 py-1 border border-gray-300 rounded text-center text-sm focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-100"
                           />
-                          <span className="max-stock">max: {product.stockQuantity}</span>
+                          <span className="text-xs text-gray-600">max: {product.stockQuantity}</span>
                         </div>
-                        <div className="item-total">
+                        <div className="font-semibold text-gray-900 ml-auto sm:ml-0">
                           {formatCurrency(product.price * item.quantity)}
                         </div>
                         <button 
                           type="button" 
                           onClick={() => removeItem(item.productId)}
-                          className="btn btn-danger btn-remove"
+                          className="px-3 py-1 bg-red-500 text-white rounded text-xs font-medium cursor-pointer transition-colors hover:bg-red-600"
                         >
                           Remove
                         </button>
@@ -476,10 +487,10 @@ const addItem = (product) => {
                 );
               })}
               
-              <div className="order-total">
-                <div className="total-summary">
-                  <span className="total-label">Order Total:</span>
-                  <span className="total-value">{formatCurrency(getTotalAmount())}</span>
+              <div className="border-t-2 border-gray-200 pt-4 mt-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                  <span className="text-xl font-bold text-gray-900">Order Total:</span>
+                  <span className="text-2xl font-bold text-green-600">{formatCurrency(getTotalAmount())}</span>
                 </div>
               </div>
             </div>
@@ -487,14 +498,14 @@ const addItem = (product) => {
         </div>
 
         {/* Submit Button */}
-        <div className="submit-section">
+        <div className="text-center">
           <button 
             onClick={handleSubmit}
             disabled={order.orderItems.length === 0 || submitting}
-            className={`btn submit-btn ${
+            className={`px-8 py-4 rounded-lg font-semibold text-lg cursor-pointer transition-all inline-flex items-center justify-center min-w-[200px] ${
               order.orderItems.length === 0 || submitting
-                ? 'btn-disabled'
-                : 'btn-success'
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-green-600 text-white hover:bg-green-700 hover:shadow-md hover:-translate-y-px'
             }`}
           >
             {submitting ? 'Processing...' : `Place Order • ${formatCurrency(getTotalAmount())}`}
