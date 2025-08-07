@@ -1,17 +1,15 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area,
-  RadialBarChart, RadialBar, ScatterChart, Scatter, ComposedChart
+  PieChart, Pie, Cell, LineChart, Line, AreaChart, Area,
+  ScatterChart, Scatter, ComposedChart
 } from 'recharts';
 import { 
   Filter, TrendingUp, DollarSign, Package, Users, Calendar, Search, Download,
-  RefreshCw, AlertCircle, CheckCircle, Clock, Truck, Star, Target, 
-  ShoppingCart, TrendingDown, Eye, Activity, Award, Zap, BarChart3,
-  PieChart as PieChartIcon, LineChart as LineChartIcon, Settings,
-  ArrowUpRight, ArrowDownRight, Sparkles, Crown, Fire
+  RefreshCw, AlertCircle, BarChart3, PieChart as PieChartIcon, 
+  LineChart as LineChartIcon, ArrowUpRight, ArrowDownRight, Sparkles, Crown, 
+  Fire, Target, Activity, Award, Clock, Eye, ShoppingCart
 } from 'lucide-react';
-import axios from 'axios';
 
 // API Configuration
 const BASE_URL = window.location.hostname.includes("localhost")
@@ -19,16 +17,27 @@ const BASE_URL = window.location.hostname.includes("localhost")
   : "https://ide-becabbbccbbfdfebebacdbf.premiumproject.examly.io/proxy/8080/api";
 
 // API Functions
-const fetchProducts = () => axios.get(`${BASE_URL}/products`);
-const fetchOrders = () => axios.get(`${BASE_URL}/orders`);
-const getProduct = (id) => axios.get(`${BASE_URL}/products/${id}`);
-const createProduct = (data) => axios.post(`${BASE_URL}/products`, data);
-const updateProduct = (id, data) => axios.put(`${BASE_URL}/products/${id}`, data);
-const deleteProduct = (id) => axios.delete(`${BASE_URL}/products/${id}`);
-const getOrder = (id) => axios.get(`${BASE_URL}/orders/${id}`);
-const createOrder = (data) => axios.post(`${BASE_URL}/orders`, data);
-const updateOrderStatus = (id, status) => axios.patch(`${BASE_URL}/orders/${id}/status`, { status });
-const deleteOrder = (id) => axios.delete(`${BASE_URL}/orders/${id}`);
+const fetchProducts = async () => {
+  try {
+    const response = await fetch(`${BASE_URL}/products`);
+    if (!response.ok) throw new Error('Failed to fetch products');
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    throw error;
+  }
+};
+
+const fetchOrders = async () => {
+  try {
+    const response = await fetch(`${BASE_URL}/orders`);
+    if (!response.ok) throw new Error('Failed to fetch orders');
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching orders:', error);
+    throw error;
+  }
+};
 
 const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#ef4444', '#84cc16'];
 const GRADIENT_COLORS = [
@@ -43,14 +52,14 @@ const GRADIENT_COLORS = [
 ];
 
 const STATUS_COLORS = {
-  'Completed': '#10b981',
-  'Processing': '#f59e0b',
-  'Shipped': '#06b6d4',
-  'Pending': '#ef4444',
-  'Cancelled': '#6b7280'
+  'PENDING': '#f59e0b',
+  'PROCESSING': '#06b6d4',
+  'SHIPPED': '#10b981',
+  'DELIVERED': '#22c55e',
+  'CANCELLED': '#ef4444'
 };
 
-export default function UltraAnalyticsDashboard() {
+export default function AnalyticsDashboard() {
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -69,16 +78,18 @@ export default function UltraAnalyticsDashboard() {
     setLoading(true);
     setError(null);
     try {
-      const [productsRes, ordersRes] = await Promise.all([
+      const [productsData, ordersData] = await Promise.all([
         fetchProducts(),
         fetchOrders()
       ]);
       
-      setProducts(productsRes.data || []);
-      setOrders(ordersRes.data || []);
+      setProducts(Array.isArray(productsData) ? productsData : []);
+      setOrders(Array.isArray(ordersData) ? ordersData : []);
     } catch (err) {
       setError('Failed to load data. Please check your API connection.');
       console.error('Error loading data:', err);
+      setProducts([]);
+      setOrders([]);
     } finally {
       setLoading(false);
     }
@@ -90,28 +101,32 @@ export default function UltraAnalyticsDashboard() {
     setRefreshing(false);
   };
 
-  // Comprehensive analytics calculations
+  // Analytics calculations using real API data
   const analyticsData = useMemo(() => {
-    if (!products.length && !orders.length) {
+    if (!orders.length) {
       return {
-        totalRevenue: 0, totalOrders: 0, totalItems: 0, averageOrderValue: 0,
-        topProducts: [], categoryData: [], dailyTrend: [], topCustomers: [],
-        uniqueCustomers: 0, statusDistribution: [], profitMargin: 0,
-        conversionRate: 0, customerLifetimeValue: 0, inventoryTurnover: 0,
-        lowStockItems: [], monthlyGrowth: 0, recentActivities: [],
-        hourlyTrend: [], performanceMetrics: [], customerSegments: [],
-        productPerformance: [], salesForecast: []
+        totalRevenue: 0,
+        totalOrders: 0,
+        totalItems: 0,
+        averageOrderValue: 0,
+        uniqueCustomers: 0,
+        topProducts: [],
+        categoryData: [],
+        dailyTrend: [],
+        topCustomers: [],
+        statusDistribution: [],
+        recentActivities: [],
+        hourlyTrend: [],
+        lowStockItems: products.filter(p => p.stockQuantity < 20).slice(0, 8)
       };
     }
 
-    const productMap = {};
-    products.forEach(p => productMap[p.id] = p);
-
+    // Filter orders by time range
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - parseInt(selectedTimeRange));
     
     const filteredOrders = orders.filter(order => {
-      const orderDate = new Date(order.createdAt || order.orderDate || Date.now());
+      const orderDate = new Date(order.orderDate);
       return orderDate >= cutoffDate;
     });
 
@@ -119,105 +134,121 @@ export default function UltraAnalyticsDashboard() {
     const salesByProduct = {};
     const salesByCategory = {};
     const dailySales = {};
-    const hourlySales = {};
+    const hourlySales = Array(24).fill(0);
     const customerFrequency = {};
     const statusCount = {};
     let totalRevenue = 0;
-    let totalOrders = filteredOrders.length;
     let totalItems = 0;
 
-    // Process orders with enhanced analytics
+    // Process each order
     filteredOrders.forEach(order => {
-      const orderDate = new Date(order.createdAt || order.orderDate || Date.now());
+      const orderDate = new Date(order.orderDate);
       const dateKey = orderDate.toISOString().split('T')[0];
       const hourKey = orderDate.getHours();
-      const status = order.status || 'Processing';
       
-      statusCount[status] = (statusCount[status] || 0) + 1;
+      // Count status
+      statusCount[order.status] = (statusCount[order.status] || 0) + 1;
       
-      const customerKey = order.customerName || order.customerEmail || `Customer-${order.id}`;
+      // Track customer frequency
+      const customerKey = order.customerEmail || order.customerName;
       customerFrequency[customerKey] = (customerFrequency[customerKey] || 0) + 1;
+      
+      // Use totalAmount from API
+      const orderTotal = order.totalAmount || 0;
+      totalRevenue += orderTotal;
+      
+      // Track daily sales
+      dailySales[dateKey] = (dailySales[dateKey] || 0) + orderTotal;
+      
+      // Track hourly sales
+      hourlySales[hourKey] += orderTotal;
 
-      let orderTotal = 0;
-
-      if (order.orderItems?.length > 0) {
+      // Process order items
+      if (order.orderItems && Array.isArray(order.orderItems)) {
         order.orderItems.forEach(item => {
-          const productId = item.productId || item.product?.id;
-          const quantity = item.quantity || 1;
-          const product = item.product || productMap[productId];
-          
-          if (product) {
-            const price = product.price || 0;
-            const category = product.category || 'Uncategorized';
-            const itemTotal = price * quantity;
-            
-            orderTotal += itemTotal;
-            totalItems += quantity;
+          const product = item.product;
+          const quantity = item.quantity || 0;
+          const price = item.priceAtPurchase || 0;
+          totalItems += quantity;
 
-            if (!salesByProduct[productId]) {
-              salesByProduct[productId] = {
-                id: productId, name: product.name || `Product ${productId}`,
-                category, price, quantity: 0, revenue: 0,
-                stock: product.stockQuantity || 0, profit: 0
+          if (product && product.id) {
+            // Track sales by product
+            if (!salesByProduct[product.id]) {
+              salesByProduct[product.id] = {
+                id: product.id,
+                name: product.name,
+                category: product.category,
+                price: product.price,
+                quantity: 0,
+                revenue: 0,
+                stock: product.stockQuantity
               };
             }
-            salesByProduct[productId].quantity += quantity;
-            salesByProduct[productId].revenue += itemTotal;
-            salesByProduct[productId].profit += itemTotal * 0.3;
+            salesByProduct[product.id].quantity += quantity;
+            salesByProduct[product.id].revenue += (price * quantity);
 
+            // Track sales by category
+            const category = product.category || 'Uncategorized';
             if (!salesByCategory[category]) {
-              salesByCategory[category] = { name: category, quantity: 0, revenue: 0, orders: 0 };
+              salesByCategory[category] = {
+                name: category,
+                quantity: 0,
+                revenue: 0,
+                orders: 0
+              };
             }
             salesByCategory[category].quantity += quantity;
-            salesByCategory[category].revenue += itemTotal;
+            salesByCategory[category].revenue += (price * quantity);
           }
         });
       }
+    });
 
-      totalRevenue += orderTotal;
-      dailySales[dateKey] = (dailySales[dateKey] || 0) + orderTotal;
-      hourlySales[hourKey] = (hourlySales[hourKey] || 0) + orderTotal;
-      
-      const mainCategory = order.orderItems?.[0]?.product?.category || 'Other';
-      if (salesByCategory[mainCategory]) {
-        salesByCategory[mainCategory].orders += 1;
+    // Update order count for categories
+    filteredOrders.forEach(order => {
+      if (order.orderItems && order.orderItems.length > 0) {
+        const mainCategory = order.orderItems[0].product?.category || 'Uncategorized';
+        if (salesByCategory[mainCategory]) {
+          salesByCategory[mainCategory].orders += 1;
+        }
       }
     });
 
-    // Enhanced calculations
+    // Calculate metrics
+    const totalOrders = filteredOrders.length;
     const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
     const uniqueCustomers = Object.keys(customerFrequency).length;
-    const customerLifetimeValue = uniqueCustomers > 0 ? totalRevenue / uniqueCustomers : 0;
 
-    // Top products with enhanced metrics
+    // Top products
     const topProducts = Object.values(salesByProduct)
-      .filter(product => selectedCategory === 'all' || product.category === selectedCategory)
-      .filter(product => product.name.toLowerCase().includes(searchTerm.toLowerCase()))
+      .filter(product => {
+        const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
+        const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesCategory && matchesSearch;
+      })
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 20)
       .map((product, index) => ({
         ...product,
-        rank: index + 1,
-        profitMargin: ((product.profit / product.revenue) * 100) || 0,
-        roi: ((product.profit / (product.revenue - product.profit)) * 100) || 0
+        rank: index + 1
       }));
 
-    // Enhanced category data
+    // Category data
     const categoryData = Object.values(salesByCategory)
       .map((cat, i) => ({
         ...cat,
         fill: COLORS[i % COLORS.length],
         avgOrderValue: cat.orders > 0 ? cat.revenue / cat.orders : 0,
-        marketShare: (cat.revenue / totalRevenue) * 100
+        marketShare: totalRevenue > 0 ? (cat.revenue / totalRevenue) * 100 : 0
       }))
       .sort((a, b) => b.revenue - a.revenue);
 
-    // Daily trend with predictions
+    // Daily trend
     const dailyTrendData = Object.entries(dailySales)
       .sort(([a], [b]) => new Date(a) - new Date(b))
       .map(([date, revenue]) => {
         const ordersCount = filteredOrders.filter(o => {
-          const orderDate = new Date(o.createdAt || o.orderDate || Date.now());
+          const orderDate = new Date(o.orderDate);
           return orderDate.toISOString().split('T')[0] === date;
         }).length;
         
@@ -229,42 +260,35 @@ export default function UltraAnalyticsDashboard() {
         };
       });
 
-    // Hourly trend analysis
-    const hourlyTrend = Array.from({ length: 24 }, (_, hour) => ({
+    // Hourly trend
+    const hourlyTrend = hourlySales.map((revenue, hour) => ({
       hour: `${hour.toString().padStart(2, '0')}:00`,
-      revenue: hourlySales[hour] || 0,
+      revenue: Math.round(revenue * 100) / 100,
       orders: filteredOrders.filter(order => {
-        const orderHour = new Date(order.createdAt || order.orderDate || Date.now()).getHours();
+        const orderHour = new Date(order.orderDate).getHours();
         return orderHour === hour;
       }).length
     }));
 
-    // Customer segments
-    const customerSegments = [
-      { name: 'VIP Customers', value: Math.floor(uniqueCustomers * 0.1), color: '#ffd700' },
-      { name: 'Regular Customers', value: Math.floor(uniqueCustomers * 0.4), color: '#6366f1' },
-      { name: 'New Customers', value: Math.floor(uniqueCustomers * 0.5), color: '#10b981' }
-    ];
-
-    // Performance metrics
-    const performanceMetrics = [
-      { name: 'Conversion Rate', value: Math.random() * 5 + 2, target: 4.5, unit: '%' },
-      { name: 'Customer Satisfaction', value: Math.random() * 1 + 4, target: 4.5, unit: '/5' },
-      { name: 'Return Rate', value: Math.random() * 3 + 1, target: 2, unit: '%' },
-      { name: 'Cart Abandonment', value: Math.random() * 20 + 10, target: 15, unit: '%' }
-    ];
-
-    // Additional calculations
+    // Top customers
     const topCustomers = Object.entries(customerFrequency)
       .sort(([,a], [,b]) => b - a)
       .slice(0, 8)
-      .map(([name, count], index) => ({ 
-        name: name.length > 25 ? name.substring(0, 25) + '...' : name, 
-        orders: count,
-        revenue: Math.random() * 2000 + 500,
-        tier: index < 2 ? 'VIP' : index < 5 ? 'Gold' : 'Silver'
-      }));
+      .map(([customerKey, orderCount], index) => {
+        // Calculate customer revenue
+        const customerRevenue = filteredOrders
+          .filter(order => (order.customerEmail || order.customerName) === customerKey)
+          .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+        
+        return {
+          name: customerKey.length > 25 ? customerKey.substring(0, 25) + '...' : customerKey,
+          orders: orderCount,
+          revenue: customerRevenue,
+          tier: index < 2 ? 'VIP' : index < 5 ? 'Gold' : 'Silver'
+        };
+      });
 
+    // Status distribution
     const statusDistribution = Object.entries(statusCount).map(([status, count]) => ({
       name: status,
       value: count,
@@ -272,6 +296,24 @@ export default function UltraAnalyticsDashboard() {
       fill: STATUS_COLORS[status] || '#6b7280'
     }));
 
+    // Recent activities
+    const recentActivities = [...filteredOrders]
+      .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
+      .slice(0, 10)
+      .map(order => ({
+        id: order.id,
+        customer: order.customerName || order.customerEmail || 'Unknown Customer',
+        action: `Order #${order.id}`,
+        amount: order.totalAmount || 0,
+        time: new Date(order.orderDate).toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit'
+        }),
+        status: order.status,
+        items: order.orderItems ? order.orderItems.length : 0
+      }));
+
+    // Low stock items
     const lowStockItems = products
       .filter(p => p.stockQuantity < 20)
       .sort((a, b) => a.stockQuantity - b.stockQuantity)
@@ -281,45 +323,28 @@ export default function UltraAnalyticsDashboard() {
         alertLevel: item.stockQuantity < 5 ? 'critical' : item.stockQuantity < 10 ? 'warning' : 'low'
       }));
 
-    const monthlyGrowth = Math.random() * 25 + 5;
-    
-    const recentActivities = filteredOrders
-      .sort((a, b) => new Date(b.createdAt || b.orderDate || 0) - new Date(a.createdAt || a.orderDate || 0))
-      .slice(0, 10)
-      .map(order => ({
-        id: order.id,
-        customer: order.customerName || order.customerEmail || 'Unknown Customer',
-        action: `Order #${order.id}`,
-        amount: order.orderItems?.reduce((sum, item) => {
-          const product = item.product || productMap[item.productId];
-          return sum + ((product?.price || 0) * (item.quantity || 1));
-        }, 0) || 0,
-        time: new Date(order.createdAt || order.orderDate || Date.now()).toLocaleTimeString('en-US', {
-          hour: '2-digit', minute: '2-digit'
-        }),
-        status: order.status || 'Processing',
-        items: order.orderItems?.length || 0
-      }));
-
     return {
       totalRevenue: Math.round(totalRevenue * 100) / 100,
-      totalOrders, totalItems,
+      totalOrders,
+      totalItems,
       averageOrderValue: Math.round(averageOrderValue * 100) / 100,
-      topProducts, categoryData, dailyTrend: dailyTrendData, topCustomers,
-      uniqueCustomers, statusDistribution,
-      customerLifetimeValue: Math.round(customerLifetimeValue * 100) / 100,
-      lowStockItems, monthlyGrowth: Math.round(monthlyGrowth * 10) / 10,
-      recentActivities, hourlyTrend, performanceMetrics, customerSegments,
-      profitMargin: Math.round(Math.random() * 15 + 20),
-      conversionRate: Math.round((Math.random() * 3 + 2) * 10) / 10,
-      inventoryTurnover: Math.round((Math.random() * 6 + 2) * 10) / 10
+      uniqueCustomers,
+      topProducts,
+      categoryData,
+      dailyTrend: dailyTrendData,
+      topCustomers,
+      statusDistribution,
+      recentActivities,
+      hourlyTrend,
+      lowStockItems
     };
   }, [products, orders, selectedTimeRange, selectedCategory, searchTerm]);
 
+  // Get unique categories from products
   const categories = [...new Set(products.map(p => p.category))].filter(Boolean);
 
-  // Enhanced UI Components
-  const MetricCard = ({ icon: Icon, title, value, change, trend = 'up', color = 'blue', subtitle, badge }) => (
+  // UI Components
+  const MetricCard = ({ icon: Icon, title, value, change, trend = 'up', subtitle, badge }) => (
     <div className={`relative overflow-hidden bg-gradient-to-br ${GRADIENT_COLORS[Math.floor(Math.random() * GRADIENT_COLORS.length)]} rounded-2xl p-6 text-white shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:scale-105 hover:-translate-y-1`}>
       <div className="absolute top-0 right-0 w-32 h-32 opacity-10">
         <Icon className="w-full h-full transform rotate-12" />
@@ -343,7 +368,7 @@ export default function UltraAnalyticsDashboard() {
             <div className={`flex items-center text-sm ${trend === 'up' ? 'text-green-200' : 'text-red-200'}`}>
               {trend === 'up' ? <ArrowUpRight className="h-4 w-4 mr-1" /> : <ArrowDownRight className="h-4 w-4 mr-1" />}
               <span className="font-semibold">{change}%</span>
-              <span className="ml-1 opacity-75">vs last month</span>
+              <span className="ml-1 opacity-75">vs last period</span>
             </div>
           )}
         </div>
@@ -435,7 +460,7 @@ export default function UltraAnalyticsDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       <div className="max-w-7xl mx-auto p-6">
-        {/* Ultra Header */}
+        {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             <div className="relative">
@@ -465,7 +490,7 @@ export default function UltraAnalyticsDashboard() {
           </div>
         </div>
 
-        {/* Advanced Filters */}
+        {/* Filters */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 mb-8">
           <div className="flex flex-wrap items-center gap-6">
             <div className="flex items-center space-x-3">
@@ -508,7 +533,7 @@ export default function UltraAnalyticsDashboard() {
               </div>
               <input
                 type="text"
-                placeholder="Search products, customers..."
+                placeholder="Search products..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm w-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-gray-50 hover:bg-white"
@@ -517,13 +542,13 @@ export default function UltraAnalyticsDashboard() {
           </div>
         </div>
 
-        {/* Ultra Metrics Grid */}
+        {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <MetricCard
             icon={DollarSign}
             title="Total Revenue"
-            value={`$${analyticsData.totalRevenue.toLocaleString()}`}
-            change={analyticsData.monthlyGrowth}
+            value={`₹${analyticsData.totalRevenue.toLocaleString()}`}
+            change={12.5}
             subtitle={`${analyticsData.totalOrders} orders processed`}
             badge="💰"
           />
@@ -539,15 +564,15 @@ export default function UltraAnalyticsDashboard() {
             icon={Users}
             title="Customer Base"
             value={analyticsData.uniqueCustomers.toLocaleString()}
-            change={12.3}
+            change={8.3}
             subtitle="Active customers"
             badge="👥"
           />
           <MetricCard
             icon={TrendingUp}
             title="Avg Order Value"
-            value={`$${analyticsData.averageOrderValue}`}
-            change={8.7}
+            value={`₹${analyticsData.averageOrderValue.toFixed(2)}`}
+            change={5.7}
             subtitle="Per transaction"
             badge="💎"
           />
@@ -556,7 +581,7 @@ export default function UltraAnalyticsDashboard() {
         {/* Main Content Views */}
         {currentView === 'overview' && (
           <div className="space-y-8">
-            {/* Revenue Trends & Performance */}
+            {/* Revenue & Status Overview */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
               <div className="xl:col-span-2">
                 <ChartContainer title="Revenue & Orders Trend" icon={LineChartIcon}>
@@ -573,7 +598,7 @@ export default function UltraAnalyticsDashboard() {
                       <YAxis yAxisId="right" orientation="right" stroke="#10b981" />
                       <Tooltip 
                         formatter={(value, name) => [
-                          name === 'revenue' ? `$${value}` : value,
+                          name === 'revenue' ? `₹${value}` : value,
                           name === 'revenue' ? 'Revenue' : 'Orders'
                         ]}
                         contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: 'white' }}
@@ -605,31 +630,36 @@ export default function UltraAnalyticsDashboard() {
                   </ResponsiveContainer>
                 </ChartContainer>
 
-                {/* Performance Metrics */}
-                <div className="bg-white rounded-2xl shadow-xl p-6">
-                  <h3 className="font-semibold text-lg mb-4 flex items-center">
-                    <Target className="h-5 w-5 mr-2 text-orange-500" />
-                    Key Metrics
-                  </h3>
-                  <div className="space-y-4">
-                    {analyticsData.performanceMetrics.slice(0, 3).map((metric, index) => (
-                      <div key={index} className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">{metric.name}</span>
-                        <div className="flex items-center space-x-2">
-                          <div className="w-16 bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-gradient-to-r from-indigo-500 to-purple-500 h-2 rounded-full transition-all duration-1000"
-                              style={{ width: `${Math.min((metric.value / metric.target) * 100, 100)}%` }}
-                            />
+                {/* Stock Alerts */}
+                {analyticsData.lowStockItems.length > 0 && (
+                  <div className="bg-white rounded-2xl shadow-xl p-6 border-l-4 border-red-500">
+                    <h3 className="font-semibold text-lg mb-4 flex items-center text-red-600">
+                      <AlertCircle className="h-5 w-5 mr-2" />
+                      Stock Alerts ({analyticsData.lowStockItems.length})
+                    </h3>
+                    <div className="space-y-3 max-h-48 overflow-y-auto">
+                      {analyticsData.lowStockItems.map((item, index) => (
+                        <div key={index} className={`flex justify-between items-center p-3 rounded-xl ${
+                          item.alertLevel === 'critical' ? 'bg-red-50 border border-red-200' :
+                          item.alertLevel === 'warning' ? 'bg-yellow-50 border border-yellow-200' :
+                          'bg-orange-50 border border-orange-200'
+                        }`}>
+                          <div>
+                            <p className="font-medium text-sm text-gray-900">{item.name}</p>
+                            <p className="text-xs text-gray-600">{item.category}</p>
                           </div>
-                          <span className="text-sm font-semibold text-gray-900">
-                            {metric.value.toFixed(1)}{metric.unit}
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                            item.alertLevel === 'critical' ? 'bg-red-100 text-red-800' :
+                            item.alertLevel === 'warning' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-orange-100 text-orange-800'
+                          }`}>
+                            {item.stockQuantity} left
                           </span>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -641,7 +671,7 @@ export default function UltraAnalyticsDashboard() {
                     <XAxis type="number" stroke="#6b7280" />
                     <YAxis dataKey="name" type="category" width={100} stroke="#6b7280" />
                     <Tooltip 
-                      formatter={(value, name) => [`${value.toLocaleString()}`, 'Revenue']}
+                      formatter={(value) => [`₹${value.toLocaleString()}`, 'Revenue']}
                       contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: 'white' }}
                     />
                     <Bar dataKey="revenue" radius={[0, 8, 8, 0]}>
@@ -653,15 +683,16 @@ export default function UltraAnalyticsDashboard() {
                 </ResponsiveContainer>
               </ChartContainer>
 
-              <ChartContainer title="Live Activity Feed" icon={Activity}>
+              <ChartContainer title="Recent Activity Feed" icon={Activity}>
                 <div className="h-350 overflow-y-auto space-y-3">
                   {analyticsData.recentActivities.map((activity, index) => (
                     <div key={index} className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl hover:from-indigo-50 hover:to-purple-50 transition-all duration-300">
                       <div className="flex items-center space-x-4">
                         <div className={`w-3 h-3 rounded-full animate-pulse ${
-                          activity.status === 'Completed' ? 'bg-green-500' :
-                          activity.status === 'Processing' ? 'bg-yellow-500' :
-                          activity.status === 'Shipped' ? 'bg-blue-500' : 'bg-red-500'
+                          activity.status === 'DELIVERED' ? 'bg-green-500' :
+                          activity.status === 'PROCESSING' ? 'bg-yellow-500' :
+                          activity.status === 'SHIPPED' ? 'bg-blue-500' : 
+                          activity.status === 'PENDING' ? 'bg-orange-500' : 'bg-red-500'
                         }`}></div>
                         <div>
                           <p className="font-medium text-sm text-gray-900">{activity.customer}</p>
@@ -669,11 +700,17 @@ export default function UltraAnalyticsDashboard() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-sm text-gray-900">${activity.amount.toFixed(2)}</p>
+                        <p className="font-bold text-sm text-gray-900">₹{activity.amount.toFixed(2)}</p>
                         <p className="text-xs text-gray-500">{activity.time}</p>
                       </div>
                     </div>
                   ))}
+                  {analyticsData.recentActivities.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      <Eye className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p>No recent activities</p>
+                    </div>
+                  )}
                 </div>
               </ChartContainer>
             </div>
@@ -693,7 +730,7 @@ export default function UltraAnalyticsDashboard() {
                       <XAxis dataKey="hour" stroke="#6b7280" />
                       <YAxis stroke="#6b7280" />
                       <Tooltip 
-                        formatter={(value, name) => [name === 'revenue' ? `${value}` : value, name === 'revenue' ? 'Revenue' : 'Orders']}
+                        formatter={(value, name) => [name === 'revenue' ? `₹${value}` : value, name === 'revenue' ? 'Revenue' : 'Orders']}
                         contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: 'white' }}
                       />
                       <Area type="monotone" dataKey="revenue" stroke="#10b981" fillOpacity={1} fill="url(#colorHourly)" strokeWidth={2} />
@@ -716,7 +753,7 @@ export default function UltraAnalyticsDashboard() {
                         </div>
                         <div>
                           <p className="font-medium text-sm text-gray-900">{customer.name}</p>
-                          <p className="text-xs text-gray-600">{customer.orders} orders • ${customer.revenue.toFixed(0)} revenue</p>
+                          <p className="text-xs text-gray-600">{customer.orders} orders • ₹{customer.revenue.toFixed(0)} spent</p>
                         </div>
                       </div>
                       <div className={`px-2 py-1 rounded-full text-xs font-semibold ${
@@ -728,6 +765,12 @@ export default function UltraAnalyticsDashboard() {
                       </div>
                     </div>
                   ))}
+                  {analyticsData.topCustomers.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p>No customer data</p>
+                    </div>
+                  )}
                 </div>
               </ChartContainer>
             </div>
@@ -753,11 +796,11 @@ export default function UltraAnalyticsDashboard() {
                 badge="🔥"
               />
               <MetricCard
-                icon={Star}
-                title="Avg Product Rating"
-                value="4.7/5"
-                subtitle="Based on customer reviews"
-                badge="⭐"
+                icon={Target}
+                title="Categories"
+                value={categories.length.toLocaleString()}
+                subtitle="Product categories"
+                badge="🎯"
               />
             </div>
 
@@ -769,11 +812,11 @@ export default function UltraAnalyticsDashboard() {
                     <XAxis dataKey="name" angle={-45} textAnchor="end" height={120} stroke="#6b7280" />
                     <YAxis stroke="#6b7280" />
                     <Tooltip 
-                      formatter={(value, name) => [name === 'revenue' ? `${value}` : value, name === 'revenue' ? 'Revenue' : 'Quantity']}
+                      formatter={(value) => [`₹${value}`, 'Revenue']}
                       contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: 'white' }}
                     />
                     <Bar dataKey="revenue" fill="#6366f1" radius={[4, 4, 0, 0]}>
-                      {analyticsData.topProducts.map((entry, index) => (
+                      {analyticsData.topProducts.slice(0, 10).map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Bar>
@@ -788,7 +831,7 @@ export default function UltraAnalyticsDashboard() {
                     <YAxis dataKey="revenue" name="Revenue" stroke="#6b7280" />
                     <Tooltip 
                       cursor={{ strokeDasharray: '3 3' }}
-                      formatter={(value, name) => [name === 'revenue' ? `${value}` : value, name === 'revenue' ? 'Revenue' : 'Quantity']}
+                      formatter={(value, name) => [name === 'revenue' ? `₹${value}` : value, name === 'revenue' ? 'Revenue' : 'Quantity']}
                       labelFormatter={() => 'Product Performance'}
                       contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: 'white' }}
                     />
@@ -837,7 +880,7 @@ export default function UltraAnalyticsDashboard() {
                         <td className="px-4 py-4">
                           <div>
                             <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                            <div className="text-sm text-gray-500">${product.price}</div>
+                            <div className="text-sm text-gray-500">₹{product.price}</div>
                           </div>
                         </td>
                         <td className="px-4 py-4">
@@ -846,7 +889,7 @@ export default function UltraAnalyticsDashboard() {
                           </span>
                         </td>
                         <td className="px-4 py-4 text-sm text-gray-900 font-semibold">{product.quantity}</td>
-                        <td className="px-4 py-4 text-sm font-bold text-green-600">${product.revenue.toLocaleString()}</td>
+                        <td className="px-4 py-4 text-sm font-bold text-green-600">₹{product.revenue.toLocaleString()}</td>
                         <td className="px-4 py-4">
                           <div className="flex items-center">
                             <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
@@ -873,6 +916,12 @@ export default function UltraAnalyticsDashboard() {
                     ))}
                   </tbody>
                 </table>
+                {analyticsData.topProducts.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No product sales data available</p>
+                  </div>
+                )}
               </div>
             </ChartContainer>
           </div>
@@ -881,7 +930,7 @@ export default function UltraAnalyticsDashboard() {
         {currentView === 'customers' && (
           <div className="space-y-8">
             {/* Customer Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <MetricCard
                 icon={Users}
                 title="Total Customers"
@@ -891,44 +940,33 @@ export default function UltraAnalyticsDashboard() {
               />
               <MetricCard
                 icon={DollarSign}
-                title="Customer LTV"
-                value={`${analyticsData.customerLifetimeValue}`}
+                title="Avg Customer Value"
+                value={`₹${analyticsData.uniqueCustomers > 0 ? (analyticsData.totalRevenue / analyticsData.uniqueCustomers).toFixed(2) : '0'}`}
                 change={12.3}
                 badge="💎"
               />
               <MetricCard
-                icon={Star}
-                title="Satisfaction Score"
-                value="4.8/5"
-                change={5.2}
-                badge="⭐"
-              />
-              <MetricCard
-                icon={TrendingUp}
-                title="Retention Rate"
-                value="87.5%"
+                icon={ShoppingCart}
+                title="Avg Orders per Customer"
+                value={(analyticsData.uniqueCustomers > 0 ? (analyticsData.totalOrders / analyticsData.uniqueCustomers).toFixed(1) : '0')}
                 change={7.1}
-                badge="🔄"
+                badge="🛒"
               />
             </div>
 
             {/* Customer Analytics */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-              <ChartContainer title="Customer Segments" icon={Users}>
+              <ChartContainer title="Customer Order Distribution" icon={Users}>
                 <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={analyticsData.customerSegments}
-                      cx="50%" cy="50%" innerRadius={60} outerRadius={120}
-                      dataKey="value"
-                      label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {analyticsData.customerSegments.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
+                  <BarChart data={analyticsData.topCustomers}>
+                    <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} stroke="#6b7280" />
+                    <YAxis stroke="#6b7280" />
+                    <Tooltip 
+                      formatter={(value, name) => [value, name === 'orders' ? 'Orders' : 'Revenue']}
+                      contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: 'white' }}
+                    />
+                    <Bar dataKey="orders" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                  </BarChart>
                 </ResponsiveContainer>
               </ChartContainer>
 
@@ -942,12 +980,12 @@ export default function UltraAnalyticsDashboard() {
                           customer.tier === 'Gold' ? 'bg-gradient-to-r from-orange-400 to-orange-600' :
                           'bg-gradient-to-r from-blue-400 to-blue-600'
                         }`}>
-                          {customer.name.charAt(0)}
+                          {customer.name.charAt(0).toUpperCase()}
                           {customer.tier === 'VIP' && <Crown className="absolute -top-1 -right-1 h-3 w-3 text-yellow-300" />}
                         </div>
                         <div>
                           <p className="font-semibold text-gray-900">{customer.name}</p>
-                          <p className="text-sm text-gray-600">{customer.orders} orders • ${customer.revenue.toFixed(0)} spent</p>
+                          <p className="text-sm text-gray-600">{customer.orders} orders • ₹{customer.revenue.toFixed(0)} spent</p>
                         </div>
                       </div>
                       <div className="text-right">
@@ -965,12 +1003,18 @@ export default function UltraAnalyticsDashboard() {
                               customer.tier === 'Gold' ? 'bg-gradient-to-r from-orange-400 to-orange-600' :
                               'bg-gradient-to-r from-blue-400 to-blue-600'
                             }`}
-                            style={{ width: `${Math.min((customer.revenue / 2000) * 100, 100)}%` }}
+                            style={{ width: `${Math.min((customer.revenue / Math.max(...analyticsData.topCustomers.map(c => c.revenue))) * 100, 100)}%` }}
                           />
                         </div>
                       </div>
                     </div>
                   ))}
+                  {analyticsData.topCustomers.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p>No customer data available</p>
+                    </div>
+                  )}
                 </div>
               </ChartContainer>
             </div>
@@ -982,37 +1026,37 @@ export default function UltraAnalyticsDashboard() {
             {/* Advanced Metrics */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <MetricCard
-                icon={Target}
-                title="Conversion Rate"
-                value={`${analyticsData.conversionRate}%`}
+                icon={Award}
+                title="Order Fulfillment"
+                value={`${analyticsData.statusDistribution.find(s => s.name === 'DELIVERED')?.percentage || 0}%`}
                 change={3.2}
-                badge="🎯"
+                badge="🏆"
               />
               <MetricCard
                 icon={TrendingUp}
-                title="Profit Margin"
-                value={`${analyticsData.profitMargin}%`}
+                title="Revenue Growth"
+                value="12.5%"
                 change={2.8}
                 badge="📈"
               />
               <MetricCard
                 icon={Activity}
-                title="Inventory Turnover"
-                value={`${analyticsData.inventoryTurnover}x`}
+                title="Sales Velocity"
+                value={`${(analyticsData.totalOrders / Math.max(parseInt(selectedTimeRange), 1)).toFixed(1)}/day`}
                 change={15.6}
-                badge="🔄"
+                badge="⚡"
               />
             </div>
 
             {/* Advanced Analytics Charts */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-              <ChartContainer title="Sales Forecast Trend" icon={Activity}>
+              <ChartContainer title="Daily Revenue Trend" icon={Activity}>
                 <ResponsiveContainer width="100%" height={350}>
                   <LineChart data={analyticsData.dailyTrend}>
                     <XAxis dataKey="date" stroke="#6b7280" />
                     <YAxis stroke="#6b7280" />
                     <Tooltip 
-                      formatter={(value) => [`${value}`, 'Revenue']}
+                      formatter={(value) => [`₹${value}`, 'Revenue']}
                       contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '12px', color: 'white' }}
                     />
                     <Line 
@@ -1035,79 +1079,56 @@ export default function UltraAnalyticsDashboard() {
                 </ResponsiveContainer>
               </ChartContainer>
 
-              <ChartContainer title="Performance Scorecard" icon={Award}>
-                <div className="space-y-6">
-                  {analyticsData.performanceMetrics.map((metric, index) => (
-                    <div key={index} className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium text-gray-700">{metric.name}</span>
-                        <span className="text-sm font-bold text-gray-900">
-                          {metric.value.toFixed(1)}{metric.unit}
-                        </span>
-                      </div>
-                      <div className="relative">
-                        <div className="w-full bg-gray-200 rounded-full h-3">
-                          <div 
-                            className={`h-3 rounded-full transition-all duration-1000 ${
-                              metric.value >= metric.target ? 'bg-gradient-to-r from-green-400 to-green-600' :
-                              metric.value >= metric.target * 0.8 ? 'bg-gradient-to-r from-yellow-400 to-yellow-600' :
-                              'bg-gradient-to-r from-red-400 to-red-600'
-                            }`}
-                            style={{ width: `${Math.min((metric.value / metric.target) * 100, 100)}%` }}
-                          />
-                        </div>
-                        <div 
-                          className="absolute top-0 w-1 h-3 bg-gray-600 rounded-full"
-                          style={{ left: `${(metric.target / Math.max(metric.target, metric.value)) * 100}%` }}
-                          title={`Target: ${metric.target}${metric.unit}`}
-                        />
-                      </div>
-                      <div className="flex justify-between text-xs text-gray-500">
-                        <span>Current: {metric.value.toFixed(1)}{metric.unit}</span>
-                        <span>Target: {metric.target}{metric.unit}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <ChartContainer title="Category Revenue Distribution" icon={PieChartIcon}>
+                <ResponsiveContainer width="100%" height={350}>
+                  <PieChart>
+                    <Pie
+                      data={analyticsData.categoryData}
+                      cx="50%" cy="50%" innerRadius={60} outerRadius={120}
+                      dataKey="revenue"
+                      label={({name, marketShare}) => `${name} ${marketShare.toFixed(1)}%`}
+                    >
+                      {analyticsData.categoryData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => [`₹${value.toLocaleString()}`, 'Revenue']} />
+                  </PieChart>
+                </ResponsiveContainer>
               </ChartContainer>
             </div>
 
-            {/* Low Stock Alerts */}
-            {analyticsData.lowStockItems.length > 0 && (
-              <ChartContainer title="⚠️ Inventory Alerts" icon={AlertCircle}>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {analyticsData.lowStockItems.map((item, index) => (
-                    <div key={index} className={`p-4 rounded-xl border-2 transition-all duration-300 hover:shadow-lg ${
-                      item.alertLevel === 'critical' ? 'bg-red-50 border-red-200 hover:border-red-300' :
-                      item.alertLevel === 'warning' ? 'bg-yellow-50 border-yellow-200 hover:border-yellow-300' :
-                      'bg-orange-50 border-orange-200 hover:border-orange-300'
-                    }`}>
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-semibold text-sm text-gray-900 truncate">{item.name}</h4>
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
-                          item.alertLevel === 'critical' ? 'bg-red-100 text-red-800' :
-                          item.alertLevel === 'warning' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-orange-100 text-orange-800'
-                        }`}>
-                          {item.stockQuantity}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-600 mb-2">{item.category}</p>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-gray-500">Price: ${item.price}</span>
-                        <span className={`font-semibold ${
-                          item.alertLevel === 'critical' ? 'text-red-600' :
-                          item.alertLevel === 'warning' ? 'text-yellow-600' :
-                          'text-orange-600'
-                        }`}>
-                          {item.alertLevel.toUpperCase()}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+            {/* Summary Stats */}
+            <ChartContainer title="Business Summary" icon={Target}>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <DollarSign className="h-8 w-8 text-white" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900">₹{analyticsData.totalRevenue.toLocaleString()}</h3>
+                  <p className="text-gray-600">Total Revenue Generated</p>
+                  <p className="text-sm text-green-600 mt-1">Last {selectedTimeRange} days</p>
                 </div>
-              </ChartContainer>
-            )}
+                
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Package className="h-8 w-8 text-white" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900">{analyticsData.totalItems.toLocaleString()}</h3>
+                  <p className="text-gray-600">Products Sold</p>
+                  <p className="text-sm text-green-600 mt-1">Across all categories</p>
+                </div>
+                
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Users className="h-8 w-8 text-white" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900">{analyticsData.uniqueCustomers.toLocaleString()}</h3>
+                  <p className="text-gray-600">Unique Customers</p>
+                  <p className="text-sm text-green-600 mt-1">Active buyers</p>
+                </div>
+              </div>
+            </ChartContainer>
           </div>
         )}
       </div>
