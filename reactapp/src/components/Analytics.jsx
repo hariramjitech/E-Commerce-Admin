@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area,
@@ -11,9 +11,24 @@ import {
   PieChart as PieChartIcon, LineChart as LineChartIcon, Settings,
   ArrowUpRight, ArrowDownRight, Sparkles, Crown, Fire
 } from 'lucide-react';
+import axios from 'axios';
 
-// Import API functions from centralized location
-import { fetchProducts, fetchOrders } from '../utils/api';
+// API Configuration
+const BASE_URL = window.location.hostname.includes("localhost")
+  ? "http://localhost:8080/api"
+  : "https://ide-becabbbccbbfdfebebacdbf.premiumproject.examly.io/proxy/8080/api";
+
+// API Functions
+const fetchProducts = () => axios.get(`${BASE_URL}/products`);
+const fetchOrders = () => axios.get(`${BASE_URL}/orders`);
+const getProduct = (id) => axios.get(`${BASE_URL}/products/${id}`);
+const createProduct = (data) => axios.post(`${BASE_URL}/products`, data);
+const updateProduct = (id, data) => axios.put(`${BASE_URL}/products/${id}`, data);
+const deleteProduct = (id) => axios.delete(`${BASE_URL}/products/${id}`);
+const getOrder = (id) => axios.get(`${BASE_URL}/orders/${id}`);
+const createOrder = (data) => axios.post(`${BASE_URL}/orders`, data);
+const updateOrderStatus = (id, status) => axios.patch(`${BASE_URL}/orders/${id}/status`, { status });
+const deleteOrder = (id) => axios.delete(`${BASE_URL}/orders/${id}`);
 
 const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#ef4444', '#84cc16'];
 const GRADIENT_COLORS = [
@@ -45,14 +60,9 @@ export default function UltraAnalyticsDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentView, setCurrentView] = useState('overview');
   const [refreshing, setRefreshing] = useState(false);
-  const [animationKey, setAnimationKey] = useState(0);
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(() => {
-      setAnimationKey(prev => prev + 1);
-    }, 3000);
-    return () => clearInterval(interval);
   }, []);
 
   const loadData = async () => {
@@ -153,7 +163,7 @@ export default function UltraAnalyticsDashboard() {
             }
             salesByProduct[productId].quantity += quantity;
             salesByProduct[productId].revenue += itemTotal;
-            salesByProduct[productId].profit += itemTotal * 0.3; // Assuming 30% profit margin
+            salesByProduct[productId].profit += itemTotal * 0.3;
 
             if (!salesByCategory[category]) {
               salesByCategory[category] = { name: category, quantity: 0, revenue: 0, orders: 0 };
@@ -168,7 +178,6 @@ export default function UltraAnalyticsDashboard() {
       dailySales[dateKey] = (dailySales[dateKey] || 0) + orderTotal;
       hourlySales[hourKey] = (hourlySales[hourKey] || 0) + orderTotal;
       
-      // Count orders per category
       const mainCategory = order.orderItems?.[0]?.product?.category || 'Other';
       if (salesByCategory[mainCategory]) {
         salesByCategory[mainCategory].orders += 1;
