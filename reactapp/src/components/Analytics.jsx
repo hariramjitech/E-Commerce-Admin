@@ -48,10 +48,14 @@ export default function AnalyticsDashboard() {
         totalOrders: 0,
         totalProducts: products.length,
         totalCustomers: 0,
+        avgOrderValue: 0,
         topProducts: [],
+        topCustomers: [],
         categoryData: [],
         dailyData: [],
-        statusData: []
+        statusData: [],
+        recentOrders: [],
+        lowStockProducts: products.filter(p => p.stockQuantity < 10).slice(0, 5)
       };
     }
 
@@ -60,6 +64,27 @@ export default function AnalyticsDashboard() {
     const totalOrders = orders.length;
     const totalProducts = products.length;
     const totalCustomers = new Set(orders.map(o => o.customerEmail)).size;
+    const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+    // Customer analysis
+    const customerMap = {};
+    orders.forEach(order => {
+      const customerKey = order.customerEmail;
+      if (!customerMap[customerKey]) {
+        customerMap[customerKey] = {
+          name: order.customerName,
+          email: order.customerEmail,
+          totalSpent: 0,
+          totalOrders: 0
+        };
+      }
+      customerMap[customerKey].totalSpent += order.totalAmount || 0;
+      customerMap[customerKey].totalOrders += 1;
+    });
+
+    const topCustomers = Object.values(customerMap)
+      .sort((a, b) => b.totalSpent - a.totalSpent)
+      .slice(0, 6);
 
     // Product sales analysis
     const productSales = {};
@@ -72,6 +97,8 @@ export default function AnalyticsDashboard() {
               productSales[product.id] = {
                 name: product.name,
                 category: product.category,
+                price: product.price,
+                stock: product.stockQuantity,
                 quantity: 0,
                 revenue: 0
               };
@@ -139,15 +166,35 @@ export default function AnalyticsDashboard() {
         fill: CHART_COLORS[index % CHART_COLORS.length]
       }));
 
+    // Recent orders
+    const recentOrders = orders
+      .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
+      .slice(0, 5)
+      .map(order => ({
+        ...order,
+        formattedDate: new Date(order.orderDate).toLocaleDateString(),
+        itemCount: order.orderItems ? order.orderItems.length : 0
+      }));
+
+    // Low stock products
+    const lowStockProducts = products
+      .filter(p => p.stockQuantity < 20)
+      .sort((a, b) => a.stockQuantity - b.stockQuantity)
+      .slice(0, 5);
+
     return {
       totalRevenue,
       totalOrders,
       totalProducts,
       totalCustomers,
+      avgOrderValue,
       topProducts,
+      topCustomers,
       categoryData,
       dailyData,
-      statusData
+      statusData,
+      recentOrders,
+      lowStockProducts
     };
   }, [products, orders]);
 
@@ -195,7 +242,7 @@ export default function AnalyticsDashboard() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <div className="bg-white p-6 rounded-lg shadow">
             <div className="flex items-center">
               <DollarSign className="h-8 w-8 text-green-600" />
@@ -232,6 +279,16 @@ export default function AnalyticsDashboard() {
               <div className="ml-4">
                 <p className="text-sm text-gray-600">Customers</p>
                 <p className="text-2xl font-bold">{stats.totalCustomers}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow">
+            <div className="flex items-center">
+              <DollarSign className="h-8 w-8 text-indigo-600" />
+              <div className="ml-4">
+                <p className="text-sm text-gray-600">Avg Order</p>
+                <p className="text-2xl font-bold">${stats.avgOrderValue.toFixed(0)}</p>
               </div>
             </div>
           </div>
@@ -282,7 +339,7 @@ export default function AnalyticsDashboard() {
         </div>
 
         {/* Tables */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Top Products */}
           <div className="bg-white p-6 rounded-lg shadow">
             <h3 className="text-lg font-semibold mb-4">Top Products</h3>
@@ -307,6 +364,88 @@ export default function AnalyticsDashboard() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          {/* Top Customers */}
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h3 className="text-lg font-semibold mb-4">Top Customers</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2">Customer</th>
+                    <th className="text-left py-2">Orders</th>
+                    <th className="text-left py-2">Total Spent</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.topCustomers.map((customer, index) => (
+                    <tr key={index} className="border-b">
+                      <td className="py-2">
+                        <div>
+                          <div className="font-medium">{customer.name}</div>
+                          <div className="text-sm text-gray-500">{customer.email}</div>
+                        </div>
+                      </td>
+                      <td className="py-2">{customer.totalOrders}</td>
+                      <td className="py-2 font-medium">${customer.totalSpent.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* Additional Features */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Recent Orders */}
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h3 className="text-lg font-semibold mb-4">Recent Orders</h3>
+            <div className="space-y-3">
+              {stats.recentOrders.map((order) => (
+                <div key={order.id} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                  <div>
+                    <div className="font-medium">#{order.id}</div>
+                    <div className="text-sm text-gray-600">{order.customerName}</div>
+                    <div className="text-xs text-gray-500">{order.formattedDate}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium">${order.totalAmount}</div>
+                    <div className={`text-xs px-2 py-1 rounded ${
+                      order.status === 'DELIVERED' ? 'bg-green-100 text-green-800' :
+                      order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {order.status}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Low Stock Alert */}
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h3 className="text-lg font-semibold mb-4">Low Stock Alert</h3>
+            <div className="space-y-3">
+              {stats.lowStockProducts.map((product) => (
+                <div key={product.id} className="flex justify-between items-center p-3 bg-red-50 rounded border border-red-200">
+                  <div>
+                    <div className="font-medium">{product.name}</div>
+                    <div className="text-sm text-gray-600">{product.category}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className={`font-bold ${
+                      product.stockQuantity < 5 ? 'text-red-600' : 'text-orange-600'
+                    }`}>
+                      {product.stockQuantity} left
+                    </div>
+                    <div className="text-sm text-gray-500">${product.price}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
