@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { fetchOrders, fetchProducts } from "../api";
+import { fetchOrders, fetchProducts } from "../utils/api";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
