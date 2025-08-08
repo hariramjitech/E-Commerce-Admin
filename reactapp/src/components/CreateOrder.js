@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { fetchProducts, createOrder, updateProduct } from '../utils/api';
 
 const CreateOrder = () => {
   const [order, setOrder] = useState({
@@ -8,49 +9,7 @@ const CreateOrder = () => {
     orderItems: []
   });
   
-  const [products] = useState([
-    {
-      id: 1,
-      name: "Premium Wireless Headphones",
-      description: "High-quality noise-cancelling wireless headphones with 30-hour battery life",
-      price: 8999,
-      category: "Electronics",
-      stockQuantity: 15
-    },
-    {
-      id: 2,
-      name: "Smart Fitness Watch",
-      description: "Advanced fitness tracking with heart rate monitor and GPS",
-      price: 12999,
-      category: "Electronics",
-      stockQuantity: 8
-    },
-    {
-      id: 3,
-      name: "Organic Cotton T-Shirt",
-      description: "Soft, comfortable organic cotton t-shirt in various colors",
-      price: 899,
-      category: "Clothing",
-      stockQuantity: 25
-    },
-    {
-      id: 4,
-      name: "Coffee Bean Blend",
-      description: "Premium arabica coffee beans, medium roast",
-      price: 599,
-      category: "Food",
-      stockQuantity: 0
-    },
-    {
-      id: 5,
-      name: "Yoga Mat",
-      description: "Non-slip eco-friendly yoga mat with carrying strap",
-      price: 1299,
-      category: "Sports",
-      stockQuantity: 12
-    }
-  ]);
-  
+  const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -60,16 +19,28 @@ const CreateOrder = () => {
   const [sortBy, setSortBy] = useState('name-asc');
 
   useEffect(() => {
-    // Simulate loading
-    setTimeout(() => {
-      setLoading(false);
-      setFilteredProducts(products);
-    }, 1000);
+    loadProducts();
   }, []);
 
   useEffect(() => {
     applyFiltersAndSorting();
   }, [products, searchTerm, categoryFilter, sortBy]);
+
+  const loadProducts = async () => {
+    try {
+      setLoading(true);
+      const response = await fetchProducts();
+      setProducts(response.data);
+      setFilteredProducts(response.data);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      showMessage('❌ Failed to load products', 'error');
+      setProducts([]);
+      setFilteredProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const applyFiltersAndSorting = () => {
     let result = [...products];
@@ -190,6 +161,21 @@ const CreateOrder = () => {
     }).format(amount);
   };
 
+  const updateProductStock = async (productId, quantityOrdered) => {
+    try {
+      const product = products.find(p => p.id === productId);
+      if (product) {
+        const updatedProduct = {
+          ...product,
+          stockQuantity: product.stockQuantity - quantityOrdered
+        };
+        await updateProduct(productId, updatedProduct);
+      }
+    } catch (error) {
+      console.error(`Error updating stock for product ${productId}:`, error);
+    }
+  };
+
   const handleSubmit = async () => {
     if (order.orderItems.length === 0) {
       showMessage("❌ Please select at least one product", 'error');
@@ -203,10 +189,30 @@ const CreateOrder = () => {
 
     try {
       setSubmitting(true);
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      showMessage("✅ Order created successfully!", 'success', true);
       
+      // Prepare order data for API
+      const orderData = {
+        customerName: order.customerName.trim(),
+        customerEmail: order.customerEmail.trim(),
+        shippingAddress: order.shippingAddress.trim(),
+        orderItems: order.orderItems,
+        totalAmount: getTotalAmount(),
+        status: 'PENDING'
+      };
+
+      // Create the order
+      await createOrder(orderData);
+      
+      // Update stock for each ordered product
+      const stockUpdatePromises = order.orderItems.map(item => 
+        updateProductStock(item.productId, item.quantity)
+      );
+      
+      await Promise.all(stockUpdatePromises);
+      
+      showMessage("✅ Order created successfully and stock updated!", 'success');
+      
+      // Reset form after successful submission
       setTimeout(() => {
         setOrder({
           customerName: '',
@@ -214,9 +220,13 @@ const CreateOrder = () => {
           shippingAddress: '',
           orderItems: []
         });
+        // Refresh products to show updated stock
+        loadProducts();
       }, 2000);
-    } catch (err) {
-      showMessage('❌ Order creation failed. Please try again.', 'error');
+    } catch (error) {
+      console.error('Error creating order:', error);
+      const errorMessage = error.response?.data?.message || 'Order creation failed. Please try again.';
+      showMessage(`❌ ${errorMessage}`, 'error');
     } finally {
       setSubmitting(false);
     }
@@ -227,14 +237,14 @@ const CreateOrder = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-2 border-gray-200 border-t-blue-600 rounded-full mx-auto mb-4 animate-spin"></div>
-          <p className="text-gray-600 text-lg">Loading products...</p>
+          <p className="text-gray-600 text-lg font-medium">Loading products...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 font-sans">
       {/* Alert System */}
       {alert.show && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -247,7 +257,7 @@ const CreateOrder = () => {
             <div className="flex justify-between items-start">
               <span className="text-gray-800 font-medium flex-1">{alert.message}</span>
               <button 
-                className="text-gray-400 text-xl font-bold hover:text-gray-600 transition-colors ml-4 p-0 leading-none"
+                className="text-gray-400 text-xl font-bold hover:text-gray-600 transition-colors ml-4 p-0 leading-none focus:outline-none focus:text-gray-600"
                 onClick={() => setAlert({ show: false, message: '', type: '' })}
               >
                 ×
@@ -262,7 +272,7 @@ const CreateOrder = () => {
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-1">Create New Order</h1>
+              <h1 className="text-3xl font-bold text-gray-900 mb-1 leading-tight">Create New Order</h1>
               <p className="text-gray-600">Add products and customer details to create an order</p>
             </div>
             <div className="flex gap-3">
@@ -291,7 +301,7 @@ const CreateOrder = () => {
                 type="text"
                 value={order.customerName}
                 onChange={e => setOrder({ ...order, customerName: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm transition-all focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-100 bg-white"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm transition-all duration-200 focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-100 bg-white placeholder-gray-400"
                 placeholder="Enter customer name"
                 required
               />
@@ -302,7 +312,7 @@ const CreateOrder = () => {
                 type="email"
                 value={order.customerEmail}
                 onChange={e => setOrder({ ...order, customerEmail: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm transition-all focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-100 bg-white"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm transition-all duration-200 focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-100 bg-white placeholder-gray-400"
                 placeholder="customer@example.com"
                 required
               />
@@ -312,7 +322,7 @@ const CreateOrder = () => {
               <textarea
                 value={order.shippingAddress}
                 onChange={e => setOrder({ ...order, shippingAddress: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm transition-all focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-100 bg-white resize-vertical"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm transition-all duration-200 focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-100 bg-white resize-vertical placeholder-gray-400 font-sans"
                 rows="3"
                 placeholder="Enter complete shipping address"
                 required
@@ -338,19 +348,19 @@ const CreateOrder = () => {
                 placeholder="Search products..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white transition-all focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-100"
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white transition-all duration-200 focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-100 placeholder-gray-400"
               />
               <input
                 type="text"
                 placeholder="Filter by category..."
                 value={categoryFilter}
                 onChange={e => setCategoryFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white transition-all focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-100"
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white transition-all duration-200 focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-100 placeholder-gray-400"
               />
               <select 
                 value={sortBy} 
                 onChange={e => setSortBy(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white transition-all focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-100"
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white transition-all duration-200 focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-100 cursor-pointer"
               >
                 <option value="name-asc">Name (A-Z)</option>
                 <option value="name-desc">Name (Z-A)</option>
@@ -362,7 +372,7 @@ const CreateOrder = () => {
               <button 
                 type="button" 
                 onClick={clearFilters} 
-                className="px-4 py-2 bg-red-500 text-white rounded-lg font-medium cursor-pointer transition-colors hover:bg-red-600"
+                className="px-4 py-2 bg-red-500 text-white rounded-lg font-medium cursor-pointer transition-colors duration-200 hover:bg-red-600 focus:outline-none focus:ring-3 focus:ring-red-100"
               >
                 Clear Filters
               </button>
@@ -373,7 +383,7 @@ const CreateOrder = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
             {filteredProducts.length > 0 ? (
               filteredProducts.map(product => (
-                <div key={product.id} className="border border-gray-200 rounded-lg p-6 bg-white transition-all hover:shadow-lg hover:-translate-y-0.5">
+                <div key={product.id} className="border border-gray-200 rounded-lg p-6 bg-white transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5">
                   <div className="mb-4">
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">{product.name}</h3>
                     <p className="text-gray-600 text-sm mb-3 line-clamp-2 leading-6 overflow-hidden" style={{
@@ -403,10 +413,10 @@ const CreateOrder = () => {
                         type="button" 
                         onClick={() => addItem(product)}
                         disabled={order.orderItems.some(item => item.productId === product.id)}
-                        className={`px-4 py-2 rounded-lg font-medium text-sm cursor-pointer transition-all inline-flex items-center justify-center ${
+                        className={`px-4 py-2 rounded-lg font-medium text-sm cursor-pointer transition-all duration-200 inline-flex items-center justify-center focus:outline-none focus:ring-3 ${
                           order.orderItems.some(item => item.productId === product.id)
-                            ? 'bg-gray-100 text-gray-600 cursor-not-allowed'
-                            : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md hover:-translate-y-px'
+                            ? 'bg-gray-100 text-gray-600 cursor-not-allowed focus:ring-gray-100'
+                            : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md hover:-translate-y-px focus:ring-blue-100'
                         }`}
                       >
                         {order.orderItems.some(item => item.productId === product.id) ? 'Added ✓' : 'Add to Order'}
@@ -423,7 +433,17 @@ const CreateOrder = () => {
               <div className="col-span-full text-center py-12">
                 <div className="text-6xl mb-4">📦</div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
-                <p className="text-gray-600">Try adjusting your search or filters</p>
+                <p className="text-gray-600 mb-4">
+                  {products.length === 0 ? 'No products available in the database' : 'Try adjusting your search or filters'}
+                </p>
+                {products.length === 0 && (
+                  <button 
+                    onClick={loadProducts}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-3 focus:ring-blue-100"
+                  >
+                    Retry Loading
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -467,7 +487,7 @@ const CreateOrder = () => {
                             max={product.stockQuantity}
                             value={item.quantity}
                             onChange={e => updateQuantity(item.productId, e.target.value)}
-                            className="w-20 px-2 py-1 border border-gray-300 rounded text-center text-sm focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-100"
+                            className="w-20 px-2 py-1 border border-gray-300 rounded text-center text-sm focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-100 transition-all duration-200"
                           />
                           <span className="text-xs text-gray-600">max: {product.stockQuantity}</span>
                         </div>
@@ -477,7 +497,7 @@ const CreateOrder = () => {
                         <button 
                           type="button" 
                           onClick={() => removeItem(item.productId)}
-                          className="px-3 py-1 bg-red-500 text-white rounded text-xs font-medium cursor-pointer transition-colors hover:bg-red-600"
+                          className="px-3 py-1 bg-red-500 text-white rounded text-xs font-medium cursor-pointer transition-colors duration-200 hover:bg-red-600 focus:outline-none focus:ring-3 focus:ring-red-100"
                         >
                           Remove
                         </button>
@@ -502,13 +522,20 @@ const CreateOrder = () => {
           <button 
             onClick={handleSubmit}
             disabled={order.orderItems.length === 0 || submitting}
-            className={`px-8 py-4 rounded-lg font-semibold text-lg cursor-pointer transition-all inline-flex items-center justify-center min-w-[200px] ${
+            className={`px-8 py-4 rounded-lg font-semibold text-lg cursor-pointer transition-all duration-200 inline-flex items-center justify-center min-w-[200px] focus:outline-none focus:ring-3 ${
               order.orderItems.length === 0 || submitting
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-green-600 text-white hover:bg-green-700 hover:shadow-md hover:-translate-y-px'
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed focus:ring-gray-100'
+                : 'bg-green-600 text-white hover:bg-green-700 hover:shadow-md hover:-translate-y-px focus:ring-green-100'
             }`}
           >
-            {submitting ? 'Processing...' : `Place Order • ${formatCurrency(getTotalAmount())}`}
+            {submitting ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                Processing...
+              </>
+            ) : (
+              `Place Order • ${formatCurrency(getTotalAmount())}`
+            )}
           </button>
         </div>
       </div>
