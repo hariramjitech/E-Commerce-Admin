@@ -1,31 +1,37 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { getOrder, getProduct } from '../utils/api';
-import '../style/OrderDetail.css'; // ✅ Import the CSS
+import '../style/OrderDetail.css';
 
 const OrderDetail = () => {
   const { id } = useParams();
   const [order, setOrder] = useState(null);
-  const [products, setProducts] = useState({}); // Map productId -> product
+  const [products, setProducts] = useState({});
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getOrder(id).then(res => {
-      const fetchedOrder = res.data;
-      setOrder(fetchedOrder);
+    setLoading(true);
+    getOrder(id)
+      .then(res => {
+        const fetchedOrder = res.data;
+        setOrder(fetchedOrder);
 
-      const productIds = fetchedOrder.orderItems.map(item => item.productId);
-      Promise.all(productIds.map(pid => getProduct(pid)))
-        .then(responses => {
-          const productMap = {};
-          responses.forEach(r => {
-            productMap[r.data.id] = r.data;
-          });
-          setProducts(productMap);
+        const productIds = [...new Set(fetchedOrder.orderItems.map(item => item.productId))];
+        return Promise.all(productIds.map(pid => getProduct(pid)));
+      })
+      .then(responses => {
+        const productMap = {};
+        responses.forEach(r => {
+          productMap[r.data.id] = r.data;
         });
-    });
+        setProducts(productMap);
+      })
+      .catch(err => console.error("Error fetching order details:", err))
+      .finally(() => setLoading(false));
   }, [id]);
 
-  if (!order) return <p style={{ textAlign: 'center', marginTop: '50px' }}>Loading...</p>;
+  if (loading) return <p style={{ textAlign: 'center', marginTop: '20px' }}>Loading order details...</p>;
+  if (!order) return <p style={{ textAlign: 'center', marginTop: '20px' }}>Order not found.</p>;
 
   return (
     <div className="order-detail-container">
@@ -38,10 +44,10 @@ const OrderDetail = () => {
 
       <h4 style={{ marginTop: '25px', marginBottom: '15px' }}>Items:</h4>
       <ul className="items-list">
-        {order.orderItems.map((item, idx) => {
+        {order.orderItems.map((item) => {
           const product = products[item.productId];
           return (
-            <li key={idx} className="item-card">
+            <li key={item.productId} className="item-card">
               {product?.imageUrl && (
                 <img
                   src={product.imageUrl}
@@ -58,6 +64,8 @@ const OrderDetail = () => {
           );
         })}
       </ul>
+
+      <Link to="/orders" className="back-btn">← Back to Orders</Link>
     </div>
   );
 };
