@@ -1,45 +1,61 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { fetchOrders, updateOrderStatus, deleteOrder } from '../utils/api';
-import { Package, Truck, CheckCircle, Trash2 } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { fetchOrders, updateOrderStatus, deleteOrder } from "../utils/api";
+import { Package, Truck, CheckCircle, Trash2 } from "lucide-react";
 
 const OrderList = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  const normalizeOrders = (raw) => {
-    return raw.map(o => ({ ...o, id: o.id || o._id || o.orderId }));
-  };
+  const normalizeOrders = (raw) =>
+    raw.map((o) => ({
+      ...o,
+      id: o.id || o._id || o.orderId,
+    }));
 
-  const load = () => {
+  const loadOrders = async () => {
     setLoading(true);
-    fetchOrders()
-      .then(res => {
-        const data = res.data;
-        const raw = Array.isArray(data) ? data
-                  : Array.isArray(data?.orders) ? data.orders
-                  : [];
-        setOrders(normalizeOrders(raw));
-      })
-      .catch(err => {
-        console.error("Error fetching orders:", err);
-        setOrders([]);
-      })
-      .finally(() => setLoading(false));
+    try {
+      const res = await fetchOrders();
+      const data = res.data;
+      const raw = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.orders)
+        ? data.orders
+        : [];
+      setOrders(normalizeOrders(raw));
+    } catch (err) {
+      console.error("Error fetching orders:", err);
+      setOrders([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    loadOrders();
+  }, []);
 
-  const updateStatus = (e, id, status) => {
+  const handleUpdateStatus = async (e, id, status) => {
     e.stopPropagation();
-    updateOrderStatus(id, status).then(load).catch(err => console.error(err));
+    try {
+      await updateOrderStatus(id, status);
+      loadOrders();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const deleteOrderById = (e, id) => {
+  const handleDeleteOrder = async (e, id) => {
     e.stopPropagation();
     if (window.confirm("Are you sure you want to delete this order?")) {
-      deleteOrder(id).then(load).catch(err => console.error(err));
+      try {
+        await deleteOrder(id);
+        loadOrders();
+      } catch (err) {
+        console.error(err);
+      }
     }
   };
 
@@ -61,6 +77,7 @@ const OrderList = () => {
           <Package className="w-6 h-6 text-gray-500" />
           Orders
         </h2>
+
         {orders.length === 0 ? (
           <div className="text-center py-12">
             <Package className="w-12 h-12 text-gray-400 mx-auto mb-2" />
@@ -68,47 +85,84 @@ const OrderList = () => {
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {orders.map(order => (
+            {orders.map((order) => (
               <div
                 key={order.id}
                 className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-all duration-200 cursor-pointer border border-gray-200"
                 onClick={() => navigate(`/orders/${order.id}`)}
                 data-testid={`order-card-${order.id}`}
               >
+                {/* Customer Info */}
                 <div className="mb-4">
                   <p className="text-lg font-semibold text-gray-900">
-                    {order.customerName}{' '}
-                    <span className="text-gray-500 font-normal">| {order.customerEmail}</span>
+                    {order.customerName}{" "}
+                    <span className="text-gray-500 font-normal">
+                      | {order.customerEmail}
+                    </span>
                   </p>
-                  <p className="text-gray-600 mt-2">Shipping Address: {order.shippingAddress}</p>
-                  <p className="text-gray-600 mt-2">
-                    Status:{' '}
-                    <span className={`font-semibold ${order.status === 'SHIPPED' ? 'text-blue-600' : order.status === 'DELIVERED' ? 'text-green-600' : 'text-gray-600'}`}>
+                  <p className="text-gray-600 mt-1">
+                    Shipping Address: {order.shippingAddress}
+                  </p>
+                  <p className="text-gray-600 mt-1">
+                    Order Date:{" "}
+                    {new Date(order.orderDate).toLocaleString("en-GB")}
+                  </p>
+                  <p className="text-gray-600 mt-1">
+                    Status:{" "}
+                    <span
+                      className={`font-semibold ${
+                        order.status === "SHIPPED"
+                          ? "text-blue-600"
+                          : order.status === "DELIVERED"
+                          ? "text-green-600"
+                          : "text-gray-600"
+                      }`}
+                    >
                       {order.status}
                     </span>
                   </p>
-                  <p className="text-gray-600 mt-2">
-                    Total Amount: <span className="font-semibold text-green-600">₹{order.totalAmount}</span>
+                  <p className="text-gray-600 mt-1">
+                    Total Amount:{" "}
+                    <span className="font-semibold text-green-600">
+                      ₹{order.totalAmount}
+                    </span>
                   </p>
                 </div>
+
+                {/* Items */}
+                <div className="mb-4">
+                  <p className="text-gray-800 font-medium">Items:</p>
+                  <ul className="list-disc list-inside text-gray-600 text-sm">
+                    {order.orderItems?.map((item) => (
+                      <li key={item.id}>
+                        {item.product?.name} × {item.quantity} (
+                        ₹{item.priceAtPurchase})
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Actions */}
                 <div className="flex flex-wrap gap-3">
                   <button
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                    onClick={(e) => updateStatus(e, order.id, 'SHIPPED')}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors duration-200"
+                    onClick={(e) => handleUpdateStatus(e, order.id, "SHIPPED")}
                   >
                     <Truck className="w-4 h-4" />
                     Mark SHIPPED
                   </button>
                   <button
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-medium text-sm hover:bg-green-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-100"
-                    onClick={(e) => updateStatus(e, order.id, 'DELIVERED')}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-medium text-sm hover:bg-green-700 transition-colors duration-200"
+                    onClick={(e) =>
+                      handleUpdateStatus(e, order.id, "DELIVERED")
+                    }
                   >
                     <CheckCircle className="w-4 h-4" />
                     Mark DELIVERED
                   </button>
                   <button
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg font-medium text-sm hover:bg-red-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-100"
-                    onClick={(e) => deleteOrderById(e, order.id)}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg font-medium text-sm hover:bg-red-700 transition-colors duration-200"
+                    onClick={(e) => handleDeleteOrder(e, order.id)}
                   >
                     <Trash2 className="w-4 h-4" />
                     Delete
