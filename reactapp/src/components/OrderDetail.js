@@ -4,34 +4,77 @@ import { getOrder, getProduct } from '../utils/api';
 import '../style/OrderDetail.css';
 
 const OrderDetail = () => {
-  const { id } = useParams();
+  const { id: routeId } = useParams();
   const [order, setOrder] = useState(null);
-  const [products, setProducts] = useState({});
+  const [products, setProducts] = useState({}); // map by product id/_id
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
-    getOrder(id)
-      .then(res => {
-        const fetchedOrder = res.data;
-        setOrder(fetchedOrder);
+    let cancelled = false;
 
-        const productIds = [...new Set(fetchedOrder.orderItems.map(item => item.productId))];
-        return Promise.all(productIds.map(pid => getProduct(pid)));
-      })
-      .then(responses => {
+    async function load() {
+      setLoading(true);
+      try {
+        const res = await getOrder(routeId);
+        const fetchedOrder = res.data || {};
+
+        // normalize id and ensure orderItems exists
+        const normalizedOrder = {
+          ...fetchedOrder,
+          id: fetchedOrder.id || fetchedOrder._id || routeId,
+          orderItems: Array.isArray(fetchedOrder.orderItems) ? fetchedOrder.orderItems : []
+        };
+        if (cancelled) return;
+        setOrder(normalizedOrder);
+
+        // collect potential product ids from different shapes:
+        const ids = [...new Set(
+          normalizedOrder.orderItems.map(item => (
+            item.productId ||
+            item.product?.id ||
+            item.product?._id ||
+            (typeof item.product === 'string' ? item.product : null)
+          ))
+        )].filter(Boolean);
+
+        if (ids.length === 0) {
+          // no product ids to fetch
+          setProducts({});
+          return;
+        }
+
+        // fetch products defensively (Promise.allSettled)
+        const results = await Promise.allSettled(ids.map(pid => getProduct(pid)));
         const productMap = {};
-        responses.forEach(r => {
-          productMap[r.data.id] = r.data;
+        results.forEach(r => {
+          if (r.status === 'fulfilled' && r.value?.data) {
+            const p = r.value.data;
+            const key = p.id || p._id;
+            if (key) productMap[key] = p;
+          } else {
+            // optionally log or ignore missing product fetch
+            console.warn('Product fetch failed for one id', r);
+          }
         });
-        setProducts(productMap);
-      })
-      .catch(err => console.error("Error fetching order details:", err))
-      .finally(() => setLoading(false));
-  }, [id]);
 
-  if (loading) return <p style={{ textAlign: 'center', marginTop: '20px' }}>Loading order details...</p>;
-  if (!order) return <p style={{ textAlign: 'center', marginTop: '20px' }}>Order not found.</p>;
+        if (!cancelled) setProducts(productMap);
+      } catch (err) {
+        console.error('Error loading order:', err);
+        if (!cancelled) {
+          setOrder(null);
+          setProducts({});
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => { cancelled = true; };
+  }, [routeId]);
+
+  if (loading) return <p style={{ textAlign: 'center', marginTop: 20 }}>Loading order details...</p>;
+  if (!order) return <p style={{ textAlign: 'center', marginTop: 20 }}>Order not found.</p>;
 
   return (
     <div className="order-detail-container">
@@ -42,23 +85,37 @@ const OrderDetail = () => {
       <p><strong>Address:</strong> {order.shippingAddress}</p>
       <p><strong>Total:</strong> ₹{order.totalAmount}</p>
 
-      <h4 style={{ marginTop: '25px', marginBottom: '15px' }}>Items:</h4>
+      <h4 style={{ marginTop: 25, marginBottom: 15 }}>Items:</h4>
       <ul className="items-list">
-        {order.orderItems.map((item) => {
-          const product = products[item.productId];
+        {order.orderItems.map((item, idx) => {
+          // Try to find product by multiple id variants
+          const pidCandidates = [
+            item.productId,
+            item.product?.id,
+            item.product?._id,
+            (typeof item.product === 'string' ? item.product : null)
+          ].filter(Boolean);
+
+          let product = null;
+          for (const pid of pidCandidates) {
+            if (products[pid]) { product = products[pid]; break; }
+            // also try alternative key if product object used _id or id
+            if (products[pid?.toString()]) { product = products[pid.toString()]; break; }
+          }
+
+          const displayId = product?.id || product?._id || item.productId || item.product?.id || item.product?._id || 'N/A';
+          const displayName = product?.name || item.product?.name || item.productName || 'Product';
+          const displayQty = item.quantity ?? item.qty ?? 1;
+          const displayPrice = item.priceAtPurchase ?? item.price ?? item.unitPrice ?? 'N/A';
+
           return (
-            <li key={item.productId} className="item-card">
-              {product?.imageUrl && (
-                <img
-                  src={product.imageUrl}
-                  alt={product.name}
-                  className="item-image"
-                />
-              )}
+            <li key={idx} className="item-card">
+              {product?.imageUrl && <img src={product.imageUrl} alt={displayName} className="item-image" />}
+
               <div className="item-details">
-                <div><strong>{product?.name || 'Product'} (ID: {item.productId})</strong></div>
-                <div>Quantity: {item.quantity}</div>
-                <div>Price at Purchase: ₹{item.priceAtPurchase}</div>
+                <div><strong>{displayName} (ID: {displayId})</strong></div>
+                <div>Quantity: {displayQty}</div>
+                <div>Price at Purchase: ₹{displayPrice}</div>
               </div>
             </li>
           );
