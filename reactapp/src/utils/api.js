@@ -20,3 +20,5 @@ export const createOrder = (data) => axios.post(`${BASE_URL}/orders`, data);
 export const updateOrderStatus = (id, status) =>
   axios.patch(`${BASE_URL}/orders/${id}/status`, { status });
 export const deleteOrder = (id) => axios.delete(`${BASE_URL}/orders/${id}`);
+// Fetch a single order by ID (used in OrderDetail)
+export const getOrderById = (id) => axios.get(`${BASE_URL}/orders/${id}`);
