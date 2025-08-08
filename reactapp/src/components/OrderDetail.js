@@ -1,129 +1,141 @@
-// src/components/OrderDetails.jsx
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { getOrderById, updateOrderStatus, getProduct } from '../utils/api';
+// src/components/OrderDetail.js
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { getOrder, updateOrderStatus, deleteOrder } from "../utils/api";
 
-const OrderDetails = ({ orderId, onBack }) => {
-  const params = useParams();
-  const id = orderId || parseInt(params.id);
-
+const OrderDetail = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
   const [order, setOrder] = useState(null);
-  const [orderItems, setOrderItems] = useState([]);
-  const [products, setProducts] = useState({});
-  const [status, setStatus] = useState('');
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Fetch order details
-  useEffect(() => {
-    const fetchOrder = async () => {
-      try {
-        setError('');
-        const data = await getOrderById(id);
-        if (!data) {
-          setError('Order not found');
-          return;
-        }
-        setOrder(data);
-        setOrderItems(data.orderItems || []);
-        setStatus(data.status || '');
-
-        // Fetch product details for each order item
-        const productMap = {};
-        for (let item of data.orderItems || []) {
-          if (item.product) {
-            productMap[item.productId] = item.product;
-          } else {
-            const prod = await getProduct(item.productId);
-            productMap[item.productId] = prod;
-          }
-        }
-        setProducts(productMap);
-      } catch (err) {
-        setError('Order not found');
-      }
-    };
-    fetchOrder();
-  }, [id]);
-
-  const handleSaveStatus = async () => {
+  const loadOrder = async () => {
     try {
-      setMessage('');
-      await updateOrderStatus(id, status);
-      setMessage('Status updated');
+      setLoading(true);
+      const data = await getOrder(id);
+      setOrder(data);
     } catch (err) {
-      setError('Failed to update status');
+      console.error(err);
+      setError("Failed to load order details.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (error) {
-    return <div>{error}</div>;
-  }
+  useEffect(() => {
+    loadOrder();
+  }, [id]);
 
-  if (!order) {
-    return <div>Loading...</div>;
-  }
+  const handleStatusChange = async (status) => {
+    try {
+      await updateOrderStatus(id, status);
+      loadOrder();
+    } catch (err) {
+      console.error(err);
+      setError("Failed to update order status.");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (window.confirm("Are you sure you want to delete this order?")) {
+      try {
+        await deleteOrder(id);
+        navigate("/orders");
+      } catch (err) {
+        console.error(err);
+        setError("Failed to delete order.");
+      }
+    }
+  };
+
+  if (loading) return <p className="text-center mt-4">Loading order...</p>;
+  if (error) return <p className="text-center mt-4 text-red-500">{error}</p>;
+  if (!order) return <p className="text-center mt-4">Order not found</p>;
 
   return (
-    <div className="order-details">
-      {/* Test expects this heading */}
-      <h1>Order Details</h1>
+    <div className="max-w-4xl mx-auto mt-8 p-6 bg-white rounded-xl shadow-lg border">
+      <h1 className="text-2xl font-bold mb-4">Order #{order.id}</h1>
+      <p className="mb-1">
+        <strong>Customer:</strong> {order.customerName} | {order.customerEmail}
+      </p>
+      <p className="mb-1">
+        <strong>Shipping Address:</strong> {order.shippingAddress}
+      </p>
+      <p className="mb-1">
+        <strong>Order Date:</strong>{" "}
+        {new Date(order.orderDate).toLocaleString()}
+      </p>
+      <p className="mb-1">
+        <strong>Status:</strong>{" "}
+        <span
+          className={`font-semibold ${
+            order.status === "DELIVERED"
+              ? "text-green-600"
+              : order.status === "SHIPPED"
+              ? "text-blue-600"
+              : "text-yellow-600"
+          }`}
+        >
+          {order.status}
+        </span>
+      </p>
+      <p className="mb-4">
+        <strong>Total Amount:</strong> ₹{order.totalAmount}
+      </p>
 
-      {/* Customer info */}
-      <p>{order.customerName}</p>
-      <p>{order.customerEmail}</p>
-
-      {/* Status dropdown */}
-      <label aria-label="Order Status:">Order Status:</label>
-      <select
-        value={status}
-        onChange={(e) => setStatus(e.target.value)}
-      >
-        <option value="PENDING">PENDING</option>
-        <option value="SHIPPED">SHIPPED</option>
-        <option value="DELIVERED">DELIVERED</option>
-      </select>
-      <button onClick={handleSaveStatus}>Save</button>
-      {message && <div>{message}</div>}
-
-      {/* Address & Total */}
-      <p>Address: {order.shippingAddress}</p>
-      <p>${order.totalAmount?.toFixed(2)}</p>
-
-      {/* Items list */}
-      <h3>Items:</h3>
-      <table>
+      {/* Items Table */}
+      <h2 className="text-lg font-semibold mb-2">Items:</h2>
+      <table className="w-full mb-6 border-collapse border border-gray-300">
         <thead>
-          <tr>
-            <th>Product</th>
-            <th>ID</th>
-            <th>Quantity</th>
-            <th>Price at Purchase</th>
+          <tr className="bg-gray-100">
+            <th className="border border-gray-300 px-3 py-2 text-left">
+              Product
+            </th>
+            <th className="border border-gray-300 px-3 py-2">Quantity</th>
+            <th className="border border-gray-300 px-3 py-2">Price</th>
           </tr>
         </thead>
         <tbody>
-          {orderItems.map((item) => {
-            const product = products[item.productId] || {};
-            return (
-              <tr key={item.id}>
-                <td>{product.name || 'Unknown Product'}</td>
-                <td>{item.productId}</td>
-                <td>{item.quantity}</td>
-                <td>${item.priceAtPurchase?.toFixed(2)}</td>
-              </tr>
-            );
-          })}
+          {order.orderItems.map((item) => (
+            <tr key={item.id}>
+              <td className="border border-gray-300 px-3 py-2">
+                {item.product.name}
+              </td>
+              <td className="border border-gray-300 px-3 py-2 text-center">
+                {item.quantity}
+              </td>
+              <td className="border border-gray-300 px-3 py-2 text-right">
+                ₹{item.priceAtPurchase}
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
 
-      {/* Back button for tests */}
-      {onBack ? (
-        <button onClick={onBack}>Back to Orders</button>
-      ) : (
-        <Link to="/orders">Back to Orders</Link>
-      )}
+      {/* Action Buttons */}
+      <div className="flex gap-3">
+        <button
+          onClick={() => handleStatusChange("SHIPPED")}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+        >
+          Mark Shipped
+        </button>
+        <button
+          onClick={() => handleStatusChange("DELIVERED")}
+          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
+        >
+          Mark Delivered
+        </button>
+        <button
+          onClick={handleDelete}
+          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg"
+        >
+          Delete Order
+        </button>
+      </div>
     </div>
   );
 };
 
-export default OrderDetails;
+export default OrderDetail;
