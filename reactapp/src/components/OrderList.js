@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchOrders, updateOrderStatus, deleteOrder } from '../utils/api';
+import { Package, Truck, CheckCircle, Trash2 } from 'lucide-react';
 
 const OrderList = () => {
   const [orders, setOrders] = useState([]);
@@ -45,7 +46,10 @@ const OrderList = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <p className="text-gray-600 text-lg font-medium">Loading orders...</p>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 border-2 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
+          <p className="text-gray-600 text-lg font-medium">Loading orders...</p>
+        </div>
       </div>
     );
   }
@@ -53,9 +57,15 @@ const OrderList = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <h2 className="text-3xl font-bold text-gray-900 mb-6">Orders</h2>
+        <h2 className="text-3xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+          <Package className="w-6 h-6 text-gray-500" />
+          Orders
+        </h2>
         {orders.length === 0 ? (
-          <p className="text-gray-600 text-center text-lg">No orders yet.</p>
+          <div className="text-center py-12">
+            <Package className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+            <p className="text-gray-600 text-lg font-medium">No orders yet.</p>
+          </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {orders.map(order => (
@@ -67,33 +77,40 @@ const OrderList = () => {
               >
                 <div className="mb-4">
                   <p className="text-lg font-semibold text-gray-900">
-                    {order.customerName} <span className="text-gray-500 font-normal">| {order.customerEmail}</span>
+                    {order.customerName}{' '}
+                    <span className="text-gray-500 font-normal">| {order.customerEmail}</span>
                   </p>
                   <p className="text-gray-600 mt-2">Shipping Address: {order.shippingAddress}</p>
                   <p className="text-gray-600 mt-2">
-                    Status: <span className={`font-semibold ${order.status === 'SHIPPED' ? 'text-blue-600' : order.status === 'DELIVERED' ? 'text-green-600' : 'text-gray-600'}`}>
+                    Status:{' '}
+                    <span className={`font-semibold ${order.status === 'SHIPPED' ? 'text-blue-600' : order.status === 'DELIVERED' ? 'text-green-600' : 'text-gray-600'}`}>
                       {order.status}
                     </span>
                   </p>
-                  <p className="text-gray-600 mt-2">Total Amount: <span className="font-semibold text-green-600">₹{order.totalAmount}</span></p>
+                  <p className="text-gray-600 mt-2">
+                    Total Amount: <span className="font-semibold text-green-600">₹{order.totalAmount}</span>
+                  </p>
                 </div>
                 <div className="flex flex-wrap gap-3">
                   <button
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-100"
                     onClick={(e) => updateStatus(e, order.id, 'SHIPPED')}
                   >
+                    <Truck className="w-4 h-4" />
                     Mark SHIPPED
                   </button>
                   <button
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium text-sm hover:bg-green-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-100"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-medium text-sm hover:bg-green-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-100"
                     onClick={(e) => updateStatus(e, order.id, 'DELIVERED')}
                   >
+                    <CheckCircle className="w-4 h-4" />
                     Mark DELIVERED
                   </button>
                   <button
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium text-sm hover:bg-red-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-100"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg font-medium text-sm hover:bg-red-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-100"
                     onClick={(e) => deleteOrderById(e, order.id)}
                   >
+                    <Trash2 className="w-4 h-4" />
                     Delete
                   </button>
                 </div>
