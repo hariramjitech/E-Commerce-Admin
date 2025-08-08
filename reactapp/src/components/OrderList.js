@@ -1,70 +1,32 @@
 import React, { useEffect, useState } from 'react';
-import { fetchOrders, updateOrderStatus, deleteOrder } from '../utils/api';
-import '../style/OrderList.css'; // ✅ Import the CSS
+import { fetchOrders } from '../utils/api';
 
-const OrderList = () => {
+export default function OrderList({ onViewOrder }) {
   const [orders, setOrders] = useState([]);
+  const [page, setPage] = useState(1);
+  const [error, setError] = useState('');
 
-  const load = () => {
-    fetchOrders()
-      .then(res => {
-        const data = res.data;
-        console.log("Fetched orders:", data); // Debugging
-        if (Array.isArray(data)) {
-          setOrders(data);
-        } else if (Array.isArray(data.orders)) {
-          setOrders(data.orders);
-        } else {
-          console.error("Unexpected response format for orders:", data);
-        }
-      })
-      .catch(err => {
-        console.error("Error fetching orders:", err);
-      });
-  };
+  useEffect(() => {
+    fetchOrders().then(setOrders).catch(err => setError(err.message));
+  }, []);
 
-  useEffect(load, []);
+  const paginated = orders.slice((page - 1) * 10, page * 10);
+  const totalPages = Math.ceil(orders.length / 10);
 
-  const updateStatus = (id, status) => {
-    updateOrderStatus(id, status)
-      .then(load)
-      .catch(err => {
-        console.error("Error updating status:", err);
-      });
-  };
-
-  const deleteOrderById = (id) => {
-    if (window.confirm("Are you sure you want to delete this order?")) {
-      deleteOrder(id)
-        .then(load)
-        .catch(err => {
-          console.error("Error deleting order:", err);
-        });
-    }
-  };
+  if (error) return <p>[Error - You need to specify the message]</p>;
 
   return (
-    <div className="order-container">
+    <div>
       <h2>Orders</h2>
-      {orders.length === 0 ? (
-        <p>No orders yet.</p>
-      ) : (
-        orders.map(order => (
-          <div key={order.id} className="order-card">
-            <p><strong>{order.customerName}</strong> | {order.customerEmail}</p>
-            <p>Shipping Address: {order.shippingAddress}</p>
-            <p>Status: <strong>{order.status}</strong></p>
-            <p>Total Amount: ₹{order.totalAmount}</p>
-            <div className="actions">
-              <button className="ship-btn" onClick={() => updateStatus(order.id, 'SHIPPED')}>Mark SHIPPED</button>
-              <button className="deliver-btn" onClick={() => updateStatus(order.id, 'DELIVERED')}>Mark DELIVERED</button>
-              <button className="delete-btn" onClick={() => deleteOrderById(order.id)}>Delete</button>
-            </div>
-          </div>
-        ))
-      )}
+      {paginated.map(o => (
+        <div key={o.id}>
+          <p>{o.customerName}</p>
+          <button data-testid={`view-button-${o.id}`} onClick={() => onViewOrder(o.id)}>View Details</button>
+        </div>
+      ))}
+      <button data-testid="page-prev" onClick={() => setPage(p => Math.max(p - 1, 1))}>Prev</button>
+      <span>Page {page} of {totalPages}</span>
+      <button data-testid="page-next" onClick={() => setPage(p => Math.min(p + 1, totalPages))}>Next</button>
     </div>
   );
-};
-
-export default OrderList;
+}

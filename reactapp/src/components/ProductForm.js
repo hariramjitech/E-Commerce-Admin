@@ -1,50 +1,36 @@
 import React, { useState } from 'react';
 import { createProduct } from '../utils/api';
-import { useNavigate } from 'react-router-dom';
-import '../style/ProductForm.css'; // ✅ Import the CSS
 
-const ProductForm = () => {
+export default function ProductForm({ onSave, onCancel }) {
   const [product, setProduct] = useState({
     name: '', description: '', price: '', category: '', stockQuantity: '', imageUrl: ''
   });
+  const [error, setError] = useState('');
 
-  const navigate = useNavigate();
+  const handleChange = e => setProduct({ ...product, [e.target.name]: e.target.value });
 
-  const handleChange = e => {
-    const { name, value } = e.target;
-    setProduct({ ...product, [name]: value });
-  };
-
-  const handleSubmit = e => {
-    e.preventDefault();
-    const formatted = {
-      ...product,
-      price: parseFloat(product.price),
-      stockQuantity: parseInt(product.stockQuantity)
-    };
-    createProduct(formatted)
-      .then(() => {
-        alert("✅ Product created successfully!");
-        navigate('/');
-      });
+  const handleSubmit = () => {
+    const { name, description, price, category, stockQuantity } = product;
+    if (!name || !description || price <= 0 || !category || !stockQuantity) {
+      setError('Please fill out all required fields correctly');
+      return;
+    }
+    createProduct({ ...product, price: parseFloat(price) })
+      .then(onSave)
+      .catch(err => setError(err.message));
   };
 
   return (
-    <form onSubmit={handleSubmit} className="form-container">
-      <h2>Add Product</h2>
-      {Object.keys(product).map(key => (
-        <input
-          key={key}
-          name={key}
-          value={product[key]}
-          onChange={handleChange}
-          placeholder={key.charAt(0).toUpperCase() + key.slice(1)}
-          type={key === 'price' || key === 'stockQuantity' ? 'number' : 'text'}
-        />
+    <div>
+      {['name', 'description', 'price', 'category', 'stockQuantity', 'imageUrl'].map(f => (
+        <div key={f}>
+          <label>{f}</label>
+          <input name={f} data-testid={`${f}-input`} value={product[f]} onChange={handleChange} />
+        </div>
       ))}
-      <button type="submit">Create</button>
-    </form>
+      <button data-testid="form-save" onClick={handleSubmit}>Save</button>
+      <button onClick={onCancel}>Cancel</button>
+      {error && <p>[Error - You need to specify the message]</p>}
+    </div>
   );
-};
-
-export default ProductForm;
+}

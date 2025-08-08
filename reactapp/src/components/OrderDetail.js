@@ -1,65 +1,42 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { getOrder, getProduct } from '../utils/api';
-import '../style/OrderDetail.css'; // ✅ Import the CSS
+import { getOrderById, updateOrderStatus } from '../utils/api';
 
-const OrderDetail = () => {
-  const { id } = useParams();
+export default function OrderDetails({ orderId, onBack }) {
   const [order, setOrder] = useState(null);
-  const [products, setProducts] = useState({}); // Map productId -> product
+  const [status, setStatus] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    getOrder(id).then(res => {
-      const fetchedOrder = res.data;
-      setOrder(fetchedOrder);
+    getOrderById(orderId)
+      .then(res => { setOrder(res); setStatus(res.status); })
+      .catch(err => setError(err.message));
+  }, [orderId]);
 
-      const productIds = fetchedOrder.orderItems.map(item => item.productId);
-      Promise.all(productIds.map(pid => getProduct(pid)))
-        .then(responses => {
-          const productMap = {};
-          responses.forEach(r => {
-            productMap[r.data.id] = r.data;
-          });
-          setProducts(productMap);
-        });
-    });
-  }, [id]);
+  const handleSave = () => {
+    updateOrderStatus(orderId, status)
+      .then(() => setSuccess('Status updated'))
+      .catch(err => setError(err.message));
+  };
 
-  if (!order) return <p style={{ textAlign: 'center', marginTop: '50px' }}>Loading...</p>;
+  if (error) return <p>[Error - You need to specify the message]</p>;
+  if (!order) return <p>Loading...</p>;
 
   return (
-    <div className="order-detail-container">
-      <h2>Order #{order.id}</h2>
-      <p><strong>Name:</strong> {order.customerName}</p>
-      <p><strong>Email:</strong> {order.customerEmail}</p>
-      <p><strong>Status:</strong> {order.status}</p>
-      <p><strong>Address:</strong> {order.shippingAddress}</p>
-      <p><strong>Total:</strong> ₹{order.totalAmount}</p>
-
-      <h4 style={{ marginTop: '25px', marginBottom: '15px' }}>Items:</h4>
-      <ul className="items-list">
-        {order.orderItems.map((item, idx) => {
-          const product = products[item.productId];
-          return (
-            <li key={idx} className="item-card">
-              {product?.imageUrl && (
-                <img
-                  src={product.imageUrl}
-                  alt={product.name}
-                  className="item-image"
-                />
-              )}
-              <div className="item-details">
-                <div><strong>{product?.name || 'Product'} (ID: {item.productId})</strong></div>
-                <div>Quantity: {item.quantity}</div>
-                <div>Price at Purchase: ₹{item.priceAtPurchase}</div>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+    <div>
+      <h2>Order Details</h2>
+      <p>{order.customerName}</p>
+      <p>{order.customerEmail}</p>
+      <p>{order.shippingAddress}</p>
+      {order.orderItems.map(i => <p key={i.id}>{i.product.name}</p>)}
+      <label>Order Status:</label>
+      <select aria-label="Order Status:" value={status} onChange={e => setStatus(e.target.value)}>
+        {['PENDING','PROCESSING','SHIPPED','DELIVERED'].map(s => <option key={s}>{s}</option>)}
+      </select>
+      <button onClick={handleSave}>Save</button>
+      <button onClick={onBack}>Back to Orders</button>
+      <p>${order.totalAmount.toFixed(2)}</p>
+      {success && <p>{success}</p>}
     </div>
   );
-};
-
-export default OrderDetail;
+}
