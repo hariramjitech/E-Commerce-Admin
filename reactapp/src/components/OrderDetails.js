@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getOrder, updateOrderStatus, deleteOrder } from '../utils/api';
+import { getOrderById, updateOrderStatus, deleteOrder } from '../utils/api';
 
 export default function OrderDetails({ orderId: propOrderId, onBack }) {
   const params = useParams();
@@ -14,19 +14,11 @@ export default function OrderDetails({ orderId: propOrderId, onBack }) {
   const [saving, setSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Helper: accept axios response or plain object
-  const extractData = (resp) => {
-    if (!resp) return resp;
-    if (resp.data !== undefined) return resp.data;
-    return resp;
-  };
-
   const loadOrder = async () => {
     try {
       setLoading(true);
       setError('');
-      const resp = await getOrder(orderId);
-      const data = extractData(resp);
+      const data = await getOrderById(orderId);
       if (!data) {
         setError('Order not found');
         setOrder(null);
@@ -35,7 +27,6 @@ export default function OrderDetails({ orderId: propOrderId, onBack }) {
       setOrder(data);
       setStatus(data.status || '');
     } catch (err) {
-      console.error('loadOrder error', err);
       setError('Order not found');
       setOrder(null);
     } finally {
@@ -55,11 +46,11 @@ export default function OrderDetails({ orderId: propOrderId, onBack }) {
   const handleSave = async () => {
     try {
       setSaving(true);
-      await updateOrderStatus(orderId, status);
-      setOrder((prev) => (prev ? { ...prev, status } : prev));
+      const response = await updateOrderStatus(orderId, status);
+      setOrder((prev) => prev ? { ...prev, status } : prev);
       setSuccessMessage('Status updated');
+      return response;
     } catch (err) {
-      console.error('updateOrderStatus error', err);
       setError('Failed to update order status');
     } finally {
       setSaving(false);
@@ -73,37 +64,28 @@ export default function OrderDetails({ orderId: propOrderId, onBack }) {
       if (onBack) onBack();
       else navigate('/orders');
     } catch (err) {
-      console.error('deleteOrder error', err);
       setError('Failed to delete order');
     }
   };
 
   if (loading) {
-    return (
-      <div className="min-h-[200px] flex items-center justify-center">
-        <div>Loading...</div>
-      </div>
-    );
+    return <div>Loading...</div>;
   }
 
   if (error) {
     return (
-      <div className="max-w-3xl mx-auto p-6">
+      <div>
         <p style={{ color: 'red' }}>{error}</p>
-        <div style={{ marginTop: 12 }}>
-          <button onClick={onBack ?? (() => navigate('/orders'))}>Back to Orders</button>
-        </div>
+        <button onClick={onBack ?? (() => navigate('/orders'))}>Back to Orders</button>
       </div>
     );
   }
 
   if (!order) {
     return (
-      <div className="max-w-3xl mx-auto p-6">
+      <div>
         <p>Order not found</p>
-        <div style={{ marginTop: 12 }}>
-          <button onClick={onBack ?? (() => navigate('/orders'))}>Back to Orders</button>
-        </div>
+        <button onClick={onBack ?? (() => navigate('/orders'))}>Back to Orders</button>
       </div>
     );
   }
@@ -111,95 +93,66 @@ export default function OrderDetails({ orderId: propOrderId, onBack }) {
   const items = Array.isArray(order.orderItems) ? order.orderItems : [];
 
   return (
-    <div className="max-w-4xl mx-auto mt-8 p-6 bg-white rounded-xl shadow border">
-      {successMessage && <p className="text-green-600 mb-4">{successMessage}</p>}
-      <h1 className="text-2xl font-bold mb-4">Order #{order.id}</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <div>
-          <p><strong>Customer:</strong> {order.customerName} </p>
-          <p><strong>Email:</strong> {order.customerEmail}</p>
-          <p><strong>Address:</strong> {order.shippingAddress}</p>
-        </div>
-        <div>
-          <p><strong>Order Date:</strong> {order.orderDate ? new Date(order.orderDate).toLocaleString() : '—'}</p>
-          <p>
-            <strong>Status:</strong>{' '}
-            <span
-              className={
-                order.status === 'DELIVERED'
-                  ? 'text-green-600 font-semibold'
-                  : order.status === 'SHIPPED'
-                  ? 'text-blue-600 font-semibold'
-                  : 'text-gray-700 font-semibold'
-              }
-            >
-              {order.status}
-            </span>
-          </p>
-          <p><strong>Total:</strong> ₹{order.totalAmount ?? '0.00'}</p>
-        </div>
+    <div>
+      {successMessage && <p className="text-green-600">{successMessage}</p>}
+      <h1>Order #{order.id}</h1>
+      <div>
+        <p>Customer: {order.customerName}</p>
+        <p>Email: {order.customerEmail}</p>
+        <p>Address: {order.shippingAddress}</p>
       </div>
-      <div className="mb-4 flex items-center gap-3">
-        <label aria-label="Order Status:" htmlFor="order-status" className="font-medium">
+      <div>
+        <p>Order Date: {order.orderDate ? new Date(order.orderDate).toLocaleString() : '—'}</p>
+        <p>Status: {order.status}</p>
+        <p>Total: ₹{order.totalAmount.toFixed(2)}</p>
+      </div>
+      <div>
+        <label aria-label="Order Status:">
           Order Status:
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            <option value="PENDING">PENDING</option>
+            <option value="SHIPPED">SHIPPED</option>
+            <option value="DELIVERED">DELIVERED</option>
+            <option value="CANCELLED">CANCELLED</option>
+          </select>
         </label>
-        <select
-          id="order-status"
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          className="border rounded px-2 py-1"
-        >
-          <option value="PENDING">PENDING</option>
-          <option value="SHIPPED">SHIPPED</option>
-          <option value="DELIVERED">DELIVERED</option>
-          <option value="CANCELLED">CANCELLED</option>
-        </select>
-        <button onClick={handleSave} disabled={saving} className="px-3 py-1 bg-blue-600 text-white rounded">
+        <button onClick={handleSave} disabled={saving}>
           {saving ? 'Saving...' : 'Save'}
         </button>
-        <button onClick={handleDelete} className="px-3 py-1 bg-red-600 text-white rounded">
-          Delete
-        </button>
+        <button onClick={handleDelete}>Delete</button>
       </div>
-      <h2 className="text-lg font-semibold mb-2">Items</h2>
+      <h2>Items</h2>
       {items.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="border px-3 py-2 text-left">Product</th>
-                <th className="border px-3 py-2">ID</th>
-                <th className="border px-3 py-2">Quantity</th>
-                <th className="border px-3 py-2">Price at Purchase</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((it) => {
-                const prod = it.product ?? {};
-                return (
-                  <tr key={it.id ?? `${prod.id}-${Math.random()}`}>
-                    <td className="border px-3 py-2">{prod.name ?? 'Product'}</td>
-                    <td className="border px-3 py-2 text-center">{prod.id ?? 'N/A'}</td>
-                    <td className="border px-3 py-2 text-center">{it.quantity ?? it.qty ?? 1}</td>
-                    <td className="border px-3 py-2 text-right">
-                      ₹{(it.priceAtPurchase ?? it.price ?? prod.price ?? 0).toFixed
-                        ? (it.priceAtPurchase ?? it.price ?? prod.price ?? 0).toFixed(2)
-                        : (it.priceAtPurchase ?? it.price ?? prod.price ?? 0)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>ID</th>
+              <th>Quantity</th>
+              <th>Price at Purchase</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((it) => {
+              const prod = it.product ?? {};
+              return (
+                <tr key={it.id}>
+                  <td>{prod.name ?? 'Product'}</td>
+                  <td>{prod.id ?? 'N/A'}</td>
+                  <td>{it.quantity ?? 1}</td>
+                  <td>₹{(it.priceAtPurchase ?? 0).toFixed(2)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       ) : (
-        <p className="text-gray-600">No items in this order.</p>
+        <p>No items in this order.</p>
       )}
-      <div className="mt-4">
-        <button onClick={onBack ?? (() => navigate('/orders'))} className="px-3 py-1 bg-gray-200 rounded">
-          Back to Orders
-        </button>
-      </div>
+      <button onClick={onBack ?? (() => navigate('/orders'))}>Back to Orders</button>
     </div>
   );
 }
