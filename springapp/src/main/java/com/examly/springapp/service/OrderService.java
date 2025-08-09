@@ -1,55 +1,54 @@
 package com.examly.springapp.service;
 
-import com.examly.springapp.dto.OrderCreateRequest;
-import com.examly.springapp.dto.OrderItemCreateRequest;
-import com.examly.springapp.dto.OrderStatusUpdateRequest;
+import com.examly.springapp.dto.*;
 import com.examly.springapp.model.*;
-import com.examly.springapp.repository.OrderRepository;
-import com.examly.springapp.repository.ProductRepository;
+import com.examly.springapp.repository.*;
 import jakarta.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class OrderService {
 
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
+    
+    private static final Set<String> VALID_STATUSES = Set.of(
+        "PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"
+    );
 
-    private static final Set<String> VALID_STATUSES = Set.of("PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED");
-
+    // CREATE ORDER
     public Order createOrder(OrderCreateRequest request) {
         List<OrderItem> orderItems = new ArrayList<>();
         double total = 0.0;
 
-        // Check and update stock for each item
         for (OrderItemCreateRequest itemReq : request.getOrderItems()) {
             Product product = productRepository.findById(itemReq.getProductId())
                     .orElseThrow(() -> new ValidationException("Product not found"));
 
             if (product.getStockQuantity() < itemReq.getQuantity()) {
-                throw new ValidationException("Insufficient stock for product: " + product.getName());
+                throw new ValidationException("Insufficient stock for: " + product.getName());
             }
 
             product.setStockQuantity(product.getStockQuantity() - itemReq.getQuantity());
             productRepository.save(product);
 
-            double price = product.getPrice();
             OrderItem item = OrderItem.builder()
                     .product(product)
                     .quantity(itemReq.getQuantity())
-                    .priceAtPurchase(price)
+                    .priceAtPurchase(product.getPrice())
                     .build();
 
             orderItems.add(item);
-            total += price * itemReq.getQuantity();
+            total += product.getPrice() * itemReq.getQuantity();
         }
 
-        // Save order first
         Order order = Order.builder()
                 .customerName(request.getCustomerName())
                 .customerEmail(request.getCustomerEmail())
@@ -57,58 +56,62 @@ public class OrderService {
                 .orderDate(LocalDateTime.now())
                 .status("PENDING")
                 .totalAmount(total)
+                .orderItems(orderItems)
                 .build();
 
-        Order savedOrder = orderRepository.save(order);
-
-        // Assign order reference to each item and save final order
-        for (OrderItem item : orderItems) {
-            item.setOrder(savedOrder);
-        }
-
-        savedOrder.setOrderItems(orderItems);
-        return orderRepository.save(savedOrder);
+        return orderRepository.save(order);
     }
 
+    // GET ALL ORDERS
     public List<Order> getAllOrders() {
         return orderRepository.findAll();
     }
 
+    // GET ORDER BY ID
     public Order getOrderById(Long id) {
         return orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
     }
 
-    public Order updateStatus(Long id, OrderStatusUpdateRequest statusRequest) {
+    // UPDATE STATUS
+    public Order updateStatus(Long id, OrderStatusUpdateRequest request) {
         Order order = getOrderById(id);
-        String newStatus = statusRequest.getStatus().toUpperCase();
+        String newStatus = request.getStatus().toUpperCase();
+        
         if (!VALID_STATUSES.contains(newStatus)) {
-            throw new ValidationException("Invalid status");
+            throw new ValidationException("Invalid status: " + newStatus);
         }
+        
         order.setStatus(newStatus);
         return orderRepository.save(order);
     }
 
+    // CANCEL ORDER (FIXED VERSION)
     public Order cancelOrder(Long id) {
         Order order = getOrderById(id);
-        
-        // Check if order can be cancelled
-        if (!Set.of("PENDING", "PROCESSING").contains(order.getStatus())) {
-            throw new ValidationException("Order cannot be cancelled in " + order.getStatus() + " status");
+        String currentStatus = order.getStatus().toUpperCase();
+
+        // Check cancellable statuses
+        if (!currentStatus.equals("PENDING") && !currentStatus.equals("PROCESSING")) {
+            throw new ValidationException(
+                "Cannot cancel order in status: " + currentStatus + 
+                ". Only PENDING/PROCESSING orders can be cancelled."
+            );
         }
 
-        // Restore stock for each item
+        // Restore stock
         for (OrderItem item : order.getOrderItems()) {
             Product product = item.getProduct();
             product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
             productRepository.save(product);
         }
 
-        // Update order status to CANCELLED
+        // Update status
         order.setStatus("CANCELLED");
         return orderRepository.save(order);
     }
 
+    // DELETE ORDER
     public void deleteOrder(Long id) {
         Order order = getOrderById(id);
         orderRepository.delete(order);
