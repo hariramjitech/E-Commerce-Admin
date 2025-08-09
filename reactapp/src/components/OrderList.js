@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { fetchOrders, updateOrderStatus, deleteOrder } from "../utils/api";
 import { Package, Truck, CheckCircle, Trash2 } from "lucide-react";
 
-const OrderList = () => {
+const OrderList = ({ onViewOrder }) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -22,13 +22,8 @@ const OrderList = () => {
     setError('');
     try {
       const res = await fetchOrders();
-      const data = res.data;
-      const raw = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.orders)
-        ? data.orders
-        : [];
-      setOrders(normalizeOrders(raw));
+      const data = Array.isArray(res) ? res : res.data || [];
+      setOrders(normalizeOrders(data));
     } catch (err) {
       console.error("Error fetching orders:", err);
       setError('Order API Error');
@@ -64,7 +59,9 @@ const OrderList = () => {
     }
   };
 
-  const handleViewDetails = (id) => {
+  const handleViewDetails = (e, id) => {
+    e.stopPropagation();
+    if (onViewOrder) onViewOrder(id);
     navigate(`/orders/${id}`);
   };
 
@@ -114,6 +111,7 @@ const OrderList = () => {
                   key={order.id}
                   className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-all duration-200 cursor-pointer border border-gray-200"
                   data-testid={`order-card-${order.id}`}
+                  onClick={() => handleViewDetails(null, order.id)}
                 >
                   <div className="mb-4">
                     <p className="text-lg font-semibold text-gray-900">
@@ -164,7 +162,7 @@ const OrderList = () => {
                     <button
                       className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors duration-200"
                       data-testid={`view-button-${order.id}`}
-                      onClick={() => handleViewDetails(order.id)}
+                      onClick={(e) => handleViewDetails(e, order.id)}
                     >
                       View Details
                     </button>
