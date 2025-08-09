@@ -18,7 +18,7 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
-    
+
     private static final Set<String> VALID_STATUSES = Set.of(
         "PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"
     );
@@ -33,7 +33,7 @@ public class OrderService {
                     .orElseThrow(() -> new ValidationException("Product not found"));
 
             if (product.getStockQuantity() < itemReq.getQuantity()) {
-                throw new ValidationException("Insufficient stock for: " + product.getName());
+                throw new ValidationException("Insufficient stock for product: " + product.getName());
             }
 
             product.setStockQuantity(product.getStockQuantity() - itemReq.getQuantity());
@@ -77,24 +77,33 @@ public class OrderService {
     public Order updateStatus(Long id, OrderStatusUpdateRequest request) {
         Order order = getOrderById(id);
         String newStatus = request.getStatus().toUpperCase();
-        
+
         if (!VALID_STATUSES.contains(newStatus)) {
-            throw new ValidationException("Invalid status: " + newStatus);
+            throw new ValidationException("Invalid status. Allowed values: " + VALID_STATUSES);
         }
-        
+
+        // Prevent invalid transitions
+        if (order.getStatus().equals("DELIVERED")) {
+            throw new ValidationException("Cannot change status of delivered order");
+        }
+
+        if (newStatus.equals("CANCELLED") && 
+            !Set.of("PENDING", "PROCESSING").contains(order.getStatus())) {
+            throw new ValidationException("Can only cancel PENDING or PROCESSING orders");
+        }
+
         order.setStatus(newStatus);
         return orderRepository.save(order);
     }
 
-    // CANCEL ORDER (FIXED VERSION)
+    // CANCEL ORDER (Dedicated method)
     public Order cancelOrder(Long id) {
         Order order = getOrderById(id);
         String currentStatus = order.getStatus().toUpperCase();
 
-        // Check cancellable statuses
-        if (!currentStatus.equals("PENDING") && !currentStatus.equals("PROCESSING")) {
+        if (!Set.of("PENDING", "PROCESSING").contains(currentStatus)) {
             throw new ValidationException(
-                "Cannot cancel order in status: " + currentStatus + 
+                "Order cannot be cancelled in status: " + currentStatus + 
                 ". Only PENDING/PROCESSING orders can be cancelled."
             );
         }
@@ -106,7 +115,6 @@ public class OrderService {
             productRepository.save(product);
         }
 
-        // Update status
         order.setStatus("CANCELLED");
         return orderRepository.save(order);
     }
