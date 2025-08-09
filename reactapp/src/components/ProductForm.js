@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createProduct } from '../utils/api';
 import { useNavigate } from 'react-router-dom';
+import '../style/ProductForm.css';
 
 const ProductForm = ({ onSave, onCancel }) => {
   const [product, setProduct] = useState({
@@ -17,7 +18,7 @@ const ProductForm = ({ onSave, onCancel }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setProduct({ ...product, [name]: value });
-    setError('');
+    setError(''); // Clear error on change
   };
 
   const handleSubmit = async (e) => {
@@ -42,18 +43,18 @@ const ProductForm = ({ onSave, onCancel }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} className="form-container">
       <h2>Add Product</h2>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {error && <p className="error" style={{ color: 'red' }}>{error}</p>}
       {[
-        { key: 'name', label: 'Name' },
-        { key: 'description', label: 'Description' },
+        { key: 'name', label: 'Name', type: 'text' },
+        { key: 'description', label: 'Description', type: 'text' },
         { key: 'price', label: 'Price', type: 'number' },
-        { key: 'category', label: 'Category' },
+        { key: 'category', label: 'Category', type: 'text' },
         { key: 'stockQuantity', label: 'Stock Quantity', type: 'number' },
-        { key: 'imageUrl', label: 'Image URL' },
-      ].map(({ key, label, type = 'text' }) => (
-        <div key={key}>
+        { key: 'imageUrl', label: 'Image URL', type: 'text' },
+      ].map(({ key, label, type }) => (
+        <div key={key} className="form-group">
           <label htmlFor={key}>{label}</label>
           <input
             id={key}
@@ -66,8 +67,14 @@ const ProductForm = ({ onSave, onCancel }) => {
           />
         </div>
       ))}
-      <button type="submit" data-testid="form-save">Save</button>
-      <button type="button" onClick={handleCancel} data-testid="form-cancel">Cancel</button>
+      <div className="form-actions">
+        <button type="submit" data-testid="form-save">
+          Save
+        </button>
+        <button type="button" onClick={handleCancel} data-testid="form-cancel">
+          Cancel
+        </button>
+      </div>
     </form>
   );
 };
