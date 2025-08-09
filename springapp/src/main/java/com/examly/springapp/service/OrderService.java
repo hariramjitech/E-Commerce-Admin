@@ -76,20 +76,35 @@ public class OrderService {
     // UPDATE STATUS
     public Order updateStatus(Long id, OrderStatusUpdateRequest request) {
         Order order = getOrderById(id);
-        String newStatus = request.getStatus().toUpperCase();
+        String newStatus = request.getStatus().toUpperCase().trim();
 
-        if (!VALID_STATUSES.contains(newStatus)) {
-            throw new ValidationException("Invalid status. Allowed values: " + VALID_STATUSES);
+        // Handle common typo
+        if ("CANCELED".equals(newStatus)) {
+            newStatus = "CANCELLED";
         }
 
-        // Prevent invalid transitions
-        if (order.getStatus().equals("DELIVERED")) {
+        if (!VALID_STATUSES.contains(newStatus)) {
+            throw new ValidationException(
+                "Invalid status: '" + request.getStatus() + "'. " +
+                "Allowed values: " + VALID_STATUSES
+            );
+        }
+
+        String currentStatus = order.getStatus().toUpperCase();
+
+        // Prevent changing delivered orders
+        if ("DELIVERED".equals(currentStatus)) {
             throw new ValidationException("Cannot change status of delivered order");
         }
 
-        if (newStatus.equals("CANCELLED") && 
-            !Set.of("PENDING", "PROCESSING").contains(order.getStatus())) {
-            throw new ValidationException("Can only cancel PENDING or PROCESSING orders");
+        // Special rules for cancellation
+        if ("CANCELLED".equals(newStatus)) {
+            if (!Set.of("PENDING", "PROCESSING").contains(currentStatus)) {
+                throw new ValidationException(
+                    "Can only cancel PENDING or PROCESSING orders. Current status: " + currentStatus
+                );
+            }
+            restoreStock(order.getOrderItems());
         }
 
         order.setStatus(newStatus);
@@ -108,15 +123,18 @@ public class OrderService {
             );
         }
 
-        // Restore stock
-        for (OrderItem item : order.getOrderItems()) {
+        restoreStock(order.getOrderItems());
+        order.setStatus("CANCELLED");
+        return orderRepository.save(order);
+    }
+
+    // Helper method to restore stock
+    private void restoreStock(List<OrderItem> items) {
+        items.forEach(item -> {
             Product product = item.getProduct();
             product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
             productRepository.save(product);
-        }
-
-        order.setStatus("CANCELLED");
-        return orderRepository.save(order);
+        });
     }
 
     // DELETE ORDER
