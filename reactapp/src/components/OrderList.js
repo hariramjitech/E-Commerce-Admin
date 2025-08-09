@@ -60,7 +60,7 @@ const OrderList = ({ onViewOrder }) => {
   };
 
   const handleViewDetails = (e, id) => {
-    e.stopPropagation();
+    if (e) e.stopPropagation(); // Make e optional
     if (onViewOrder) onViewOrder(id);
     navigate(`/orders/${id}`);
   };
@@ -111,7 +111,6 @@ const OrderList = ({ onViewOrder }) => {
                   key={order.id}
                   className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-all duration-200 cursor-pointer border border-gray-200"
                   data-testid={`order-card-${order.id}`}
-                  onClick={() => handleViewDetails(null, order.id)}
                 >
                   <div className="mb-4">
                     <p className="text-lg font-semibold text-gray-900">
