@@ -6,6 +6,9 @@ import { Package, Truck, CheckCircle, Trash2 } from "lucide-react";
 const OrderList = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ordersPerPage = 10;
   const navigate = useNavigate();
 
   const normalizeOrders = (raw) =>
@@ -16,6 +19,7 @@ const OrderList = () => {
 
   const loadOrders = async () => {
     setLoading(true);
+    setError('');
     try {
       const res = await fetchOrders();
       const data = res.data;
@@ -27,6 +31,7 @@ const OrderList = () => {
       setOrders(normalizeOrders(raw));
     } catch (err) {
       console.error("Error fetching orders:", err);
+      setError('Order API Error');
       setOrders([]);
     } finally {
       setLoading(false);
@@ -59,6 +64,16 @@ const OrderList = () => {
     }
   };
 
+  const handleViewDetails = (id) => {
+    navigate(`/orders/${id}`);
+  };
+
+  const totalPages = Math.ceil(orders.length / ordersPerPage);
+  const paginatedOrders = orders.slice(
+    (currentPage - 1) * ordersPerPage,
+    currentPage * ordersPerPage
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -66,6 +81,14 @@ const OrderList = () => {
           <div className="w-6 h-6 border-2 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
           <p className="text-gray-600 text-lg font-medium">Loading orders...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <p className="text-red-600 text-lg font-medium">{error}</p>
       </div>
     );
   }
@@ -84,93 +107,112 @@ const OrderList = () => {
             <p className="text-gray-600 text-lg font-medium">No orders yet.</p>
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {orders.map((order) => (
-              <div
-                key={order.id}
-                className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-all duration-200 cursor-pointer border border-gray-200"
-                onClick={() => navigate(`/orders/${order.id}`)}
-                data-testid={`order-card-${order.id}`}
-              >
-                {/* Customer Info */}
-                <div className="mb-4">
-                  <p className="text-lg font-semibold text-gray-900">
-                    {order.customerName}{" "}
-                    <span className="text-gray-500 font-normal">
-                      | {order.customerEmail}
-                    </span>
-                  </p>
-                  <p className="text-gray-600 mt-1">
-                    Shipping Address: {order.shippingAddress}
-                  </p>
-                  <p className="text-gray-600 mt-1">
-                    Order Date:{" "}
-                    {new Date(order.orderDate).toLocaleString("en-GB")}
-                  </p>
-                  <p className="text-gray-600 mt-1">
-                    Status:{" "}
-                    <span
-                      className={`font-semibold ${
-                        order.status === "SHIPPED"
-                          ? "text-blue-600"
-                          : order.status === "DELIVERED"
-                          ? "text-green-600"
-                          : "text-gray-600"
-                      }`}
+          <>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {paginatedOrders.map((order) => (
+                <div
+                  key={order.id}
+                  className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-all duration-200 cursor-pointer border border-gray-200"
+                  data-testid={`order-card-${order.id}`}
+                >
+                  <div className="mb-4">
+                    <p className="text-lg font-semibold text-gray-900">
+                      {order.customerName}{" "}
+                      <span className="text-gray-500 font-normal">
+                        | {order.customerEmail}
+                      </span>
+                    </p>
+                    <p className="text-gray-600 mt-1">
+                      Shipping Address: {order.shippingAddress}
+                    </p>
+                    <p className="text-gray-600 mt-1">
+                      Order Date: {new Date(order.orderDate).toLocaleString("en-GB")}
+                    </p>
+                    <p className="text-gray-600 mt-1">
+                      Status:{" "}
+                      <span
+                        className={`font-semibold ${
+                          order.status === "SHIPPED"
+                            ? "text-blue-600"
+                            : order.status === "DELIVERED"
+                            ? "text-green-600"
+                            : "text-gray-600"
+                        }`}
+                      >
+                        {order.status}
+                      </span>
+                    </p>
+                    <p className="text-gray-600 mt-1">
+                      Total Amount:{" "}
+                      <span className="font-semibold text-green-600">
+                        ₹{order.totalAmount}
+                      </span>
+                    </p>
+                  </div>
+                  <div className="mb-4">
+                    <p className="text-gray-800 font-medium">Items:</p>
+                    <ul className="list-disc list-inside text-gray-600 text-sm">
+                      {order.orderItems?.map((item) => (
+                        <li key={item.id}>
+                          {item.product?.name} × {item.quantity} (
+                          ₹{item.priceAtPurchase})
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors duration-200"
+                      data-testid={`view-button-${order.id}`}
+                      onClick={() => handleViewDetails(order.id)}
                     >
-                      {order.status}
-                    </span>
-                  </p>
-                  <p className="text-gray-600 mt-1">
-                    Total Amount:{" "}
-                    <span className="font-semibold text-green-600">
-                      ₹{order.totalAmount}
-                    </span>
-                  </p>
+                      View Details
+                    </button>
+                    <button
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors duration-200"
+                      onClick={(e) => handleUpdateStatus(e, order.id, "SHIPPED")}
+                    >
+                      <Truck className="w-4 h-4" />
+                      Mark SHIPPED
+                    </button>
+                    <button
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-medium text-sm hover:bg-green-700 transition-colors duration-200"
+                      onClick={(e) => handleUpdateStatus(e, order.id, "DELIVERED")}
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      Mark DELIVERED
+                    </button>
+                    <button
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg font-medium text-sm hover:bg-red-700 transition-colors duration-200"
+                      onClick={(e) => handleDeleteOrder(e, order.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete
+                    </button>
+                  </div>
                 </div>
-
-                {/* Items */}
-                <div className="mb-4">
-                  <p className="text-gray-800 font-medium">Items:</p>
-                  <ul className="list-disc list-inside text-gray-600 text-sm">
-                    {order.orderItems?.map((item) => (
-                      <li key={item.id}>
-                        {item.product?.name} × {item.quantity} (
-                        ₹{item.priceAtPurchase})
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* Actions */}
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors duration-200"
-                    onClick={(e) => handleUpdateStatus(e, order.id, "SHIPPED")}
-                  >
-                    <Truck className="w-4 h-4" />
-                    Mark SHIPPED
-                  </button>
-                  <button
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-medium text-sm hover:bg-green-700 transition-colors duration-200"
-                    onClick={(e) =>
-                      handleUpdateStatus(e, order.id, "DELIVERED")
-                    }
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                    Mark DELIVERED
-                  </button>
-                  <button
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg font-medium text-sm hover:bg-red-700 transition-colors duration-200"
-                    onClick={(e) => handleDeleteOrder(e, order.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+            <div className="mt-6 flex justify-center gap-4">
+              <button
+                data-testid="page-prev"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((prev) => prev - 1)}
+                className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span>Page {currentPage} of {totalPages}</span>
+              <button
+                data-testid="page-next"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((prev) => prev + 1)}
+                className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>
