@@ -4,7 +4,7 @@ import ProductList from './components/ProductList';
 import ProductForm from './components/ProductForm';
 import OrderList from './components/OrderList';
 import CreateOrder from './components/CreateOrder';
-import OrderDetail from './components/OrderDetail';
+import OrderDetails from './components/OrderDetails';
 import Analytics from './components/Analytics';
 import './style/App.css';
 
@@ -24,7 +24,7 @@ const App = () => {
         <Route path="/" element={<ProductList />} />
         <Route path="/add-product" element={<ProductForm />} />
         <Route path="/orders" element={<OrderList />} />
-        <Route path="/orders/:id" element={<OrderDetail />} />
+        <Route path="/orders/:id" element={<OrderDetails />} />
         <Route path="/create-order" element={<CreateOrder />} />
         <Route path="/analytics" element={<Analytics />} />
       </Routes>

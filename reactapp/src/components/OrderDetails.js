@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getOrder, updateOrderStatus, deleteOrder } from '../utils/api';
 
-export default function OrderDetail({ orderId: propOrderId, onBack }) {
+export default function OrderDetails({ orderId: propOrderId, onBack }) {
   const params = useParams();
   const navigate = useNavigate();
   const orderId = propOrderId ?? params.id;
