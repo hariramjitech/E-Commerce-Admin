@@ -12,7 +12,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/orders")
-@CrossOrigin(origins = "*") // Allow all origins for testing
+@CrossOrigin(origins = "http://localhost:8081")
 public class OrderController {
 
     private final OrderService orderService;
@@ -37,16 +37,13 @@ public class OrderController {
     }
 
     @PatchMapping("/{id}/status")
-    public ResponseEntity<Order> updateOrderStatus(
-            @PathVariable Long id,
-            @Valid @RequestBody OrderStatusUpdateRequest req
-    ) {
+    public ResponseEntity<Order> updateOrderStatus(@PathVariable Long id, @RequestBody OrderStatusUpdateRequest req) {
         return ResponseEntity.ok(orderService.updateStatus(id, req));
     }
-
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteOrder(@PathVariable Long id) {
-        orderService.deleteOrder(id);
-        return ResponseEntity.noContent().build();
-    }
+public ResponseEntity<Void> deleteOrder(@PathVariable Long id) {
+    orderService.deleteOrder(id);
+    return ResponseEntity.noContent().build();
+}
+
 }
