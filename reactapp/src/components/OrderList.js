@@ -26,7 +26,8 @@ import {
   Settings,
   ExternalLink,
   Edit3,
-  Archive
+  Archive,
+  X
 } from "lucide-react";
 
 const OrderList = ({ onViewOrder }) => {
