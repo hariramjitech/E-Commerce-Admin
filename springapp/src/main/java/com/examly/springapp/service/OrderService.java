@@ -20,7 +20,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
 
-    private static final Set<String> VALID_STATUSES = Set.of("PENDING", "PROCESSING", "SHIPPED", "DELIVERED");
+    private static final Set<String> VALID_STATUSES = Set.of("PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED");
 
     public Order createOrder(OrderCreateRequest request) {
         List<OrderItem> orderItems = new ArrayList<>();
@@ -88,10 +88,29 @@ public class OrderService {
         order.setStatus(newStatus);
         return orderRepository.save(order);
     }
-    public void deleteOrder(Long id) {
-        Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
-        orderRepository.delete(order);
-}
 
+    public Order cancelOrder(Long id) {
+        Order order = getOrderById(id);
+        
+        // Check if order can be cancelled
+        if (!Set.of("PENDING", "PROCESSING").contains(order.getStatus())) {
+            throw new ValidationException("Order cannot be cancelled in " + order.getStatus() + " status");
+        }
+
+        // Restore stock for each item
+        for (OrderItem item : order.getOrderItems()) {
+            Product product = item.getProduct();
+            product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
+            productRepository.save(product);
+        }
+
+        // Update order status to CANCELLED
+        order.setStatus("CANCELLED");
+        return orderRepository.save(order);
+    }
+
+    public void deleteOrder(Long id) {
+        Order order = getOrderById(id);
+        orderRepository.delete(order);
+    }
 }
