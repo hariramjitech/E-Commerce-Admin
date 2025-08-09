@@ -1,4 +1,3 @@
-// src/components/OrderDetail.js
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getOrder, updateOrderStatus, deleteOrder } from '../utils/api';
@@ -13,11 +12,11 @@ export default function OrderDetails({ orderId: propOrderId, onBack }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Helper: accept axios response or plain object
   const extractData = (resp) => {
     if (!resp) return resp;
-    // axios response -> { data: { ... } }
     if (resp.data !== undefined) return resp.data;
     return resp;
   };
@@ -51,15 +50,14 @@ export default function OrderDetails({ orderId: propOrderId, onBack }) {
       return;
     }
     loadOrder();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
 
   const handleSave = async () => {
     try {
       setSaving(true);
       await updateOrderStatus(orderId, status);
-      // update local state immediately (so tests can observe)
-      setOrder((prev) => prev ? { ...prev, status } : prev);
+      setOrder((prev) => (prev ? { ...prev, status } : prev));
+      setSuccessMessage('Status updated');
     } catch (err) {
       console.error('updateOrderStatus error', err);
       setError('Failed to update order status');
@@ -110,13 +108,12 @@ export default function OrderDetails({ orderId: propOrderId, onBack }) {
     );
   }
 
-  // Ensure orderItems is an array (safety)
   const items = Array.isArray(order.orderItems) ? order.orderItems : [];
 
   return (
     <div className="max-w-4xl mx-auto mt-8 p-6 bg-white rounded-xl shadow border">
+      {successMessage && <p className="text-green-600 mb-4">{successMessage}</p>}
       <h1 className="text-2xl font-bold mb-4">Order #{order.id}</h1>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
           <p><strong>Customer:</strong> {order.customerName} </p>
@@ -127,20 +124,25 @@ export default function OrderDetails({ orderId: propOrderId, onBack }) {
           <p><strong>Order Date:</strong> {order.orderDate ? new Date(order.orderDate).toLocaleString() : '—'}</p>
           <p>
             <strong>Status:</strong>{' '}
-            <span className={
-              order.status === 'DELIVERED' ? 'text-green-600 font-semibold' :
-              order.status === 'SHIPPED' ? 'text-blue-600 font-semibold' : 'text-gray-700 font-semibold'
-            }>
+            <span
+              className={
+                order.status === 'DELIVERED'
+                  ? 'text-green-600 font-semibold'
+                  : order.status === 'SHIPPED'
+                  ? 'text-blue-600 font-semibold'
+                  : 'text-gray-700 font-semibold'
+              }
+            >
               {order.status}
             </span>
           </p>
           <p><strong>Total:</strong> ₹{order.totalAmount ?? '0.00'}</p>
         </div>
       </div>
-
-      {/* Status edit + Save */}
       <div className="mb-4 flex items-center gap-3">
-        <label aria-label="Order Status:" htmlFor="order-status" className="font-medium">Order Status:</label>
+        <label aria-label="Order Status:" htmlFor="order-status" className="font-medium">
+          Order Status:
+        </label>
         <select
           id="order-status"
           value={status}
@@ -155,10 +157,10 @@ export default function OrderDetails({ orderId: propOrderId, onBack }) {
         <button onClick={handleSave} disabled={saving} className="px-3 py-1 bg-blue-600 text-white rounded">
           {saving ? 'Saving...' : 'Save'}
         </button>
-        <button onClick={handleDelete} className="px-3 py-1 bg-red-600 text-white rounded">Delete</button>
+        <button onClick={handleDelete} className="px-3 py-1 bg-red-600 text-white rounded">
+          Delete
+        </button>
       </div>
-
-      {/* Items table */}
       <h2 className="text-lg font-semibold mb-2">Items</h2>
       {items.length > 0 ? (
         <div className="overflow-x-auto">
@@ -179,7 +181,11 @@ export default function OrderDetails({ orderId: propOrderId, onBack }) {
                     <td className="border px-3 py-2">{prod.name ?? 'Product'}</td>
                     <td className="border px-3 py-2 text-center">{prod.id ?? 'N/A'}</td>
                     <td className="border px-3 py-2 text-center">{it.quantity ?? it.qty ?? 1}</td>
-                    <td className="border px-3 py-2 text-right">₹{(it.priceAtPurchase ?? it.price ?? prod.price ?? 0).toFixed ? (it.priceAtPurchase ?? it.price ?? prod.price ?? 0).toFixed(2) : (it.priceAtPurchase ?? it.price ?? prod.price ?? 0)}</td>
+                    <td className="border px-3 py-2 text-right">
+                      ₹{(it.priceAtPurchase ?? it.price ?? prod.price ?? 0).toFixed
+                        ? (it.priceAtPurchase ?? it.price ?? prod.price ?? 0).toFixed(2)
+                        : (it.priceAtPurchase ?? it.price ?? prod.price ?? 0)}
+                    </td>
                   </tr>
                 );
               })}
@@ -189,10 +195,10 @@ export default function OrderDetails({ orderId: propOrderId, onBack }) {
       ) : (
         <p className="text-gray-600">No items in this order.</p>
       )}
-
-      {/* Back */}
       <div className="mt-4">
-        <button onClick={onBack ?? (() => navigate('/orders'))} className="px-3 py-1 bg-gray-200 rounded">Back to Orders</button>
+        <button onClick={onBack ?? (() => navigate('/orders'))} className="px-3 py-1 bg-gray-200 rounded">
+          Back to Orders
+        </button>
       </div>
     </div>
   );
