@@ -23,44 +23,48 @@ public class OrderService {
         "PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"
     );
 
-    // CREATE ORDER
-    public Order createOrder(OrderCreateRequest request) {
-        List<OrderItem> orderItems = new ArrayList<>();
-        double total = 0.0;
+  // CREATE ORDER
+public Order createOrder(OrderCreateRequest request) {
+    List<OrderItem> orderItems = new ArrayList<>();
+    double total = 0.0;
 
-        for (OrderItemCreateRequest itemReq : request.getOrderItems()) {
-            Product product = productRepository.findById(itemReq.getProductId())
-                    .orElseThrow(() -> new ValidationException("Product not found"));
+    // Prepare order first
+    Order order = new Order();
+    order.setCustomerName(request.getCustomerName());
+    order.setCustomerEmail(request.getCustomerEmail());
+    order.setShippingAddress(request.getShippingAddress());
+    order.setOrderDate(LocalDateTime.now());
+    order.setStatus("PENDING");
 
-            if (product.getStockQuantity() < itemReq.getQuantity()) {
-                throw new ValidationException("Insufficient stock for product: " + product.getName());
-            }
+    for (OrderItemCreateRequest itemReq : request.getOrderItems()) {
+        Product product = productRepository.findById(itemReq.getProductId())
+                .orElseThrow(() -> new ValidationException("Product not found"));
 
-            product.setStockQuantity(product.getStockQuantity() - itemReq.getQuantity());
-            productRepository.save(product);
-
-            OrderItem item = OrderItem.builder()
-                    .product(product)
-                    .quantity(itemReq.getQuantity())
-                    .priceAtPurchase(product.getPrice())
-                    .build();
-
-            orderItems.add(item);
-            total += product.getPrice() * itemReq.getQuantity();
+        if (product.getStockQuantity() < itemReq.getQuantity()) {
+            throw new ValidationException("Insufficient stock for product: " + product.getName());
         }
 
-        Order order = Order.builder()
-                .customerName(request.getCustomerName())
-                .customerEmail(request.getCustomerEmail())
-                .shippingAddress(request.getShippingAddress())
-                .orderDate(LocalDateTime.now())
-                .status("PENDING")
-                .totalAmount(total)
-                .orderItems(orderItems)
+        // reduce stock
+        product.setStockQuantity(product.getStockQuantity() - itemReq.getQuantity());
+        productRepository.save(product);
+
+        // build item
+        OrderItem item = OrderItem.builder()
+                .product(product)
+                .quantity(itemReq.getQuantity())
+                .priceAtPurchase(product.getPrice())
+                .order(order)                // 🔥 FIX: set parent reference
                 .build();
 
-        return orderRepository.save(order);
+        orderItems.add(item);
+        total += product.getPrice() * itemReq.getQuantity();
     }
+
+    order.setOrderItems(orderItems);
+    order.setTotalAmount(total);
+
+    return orderRepository.save(order); // cascades items
+}
 
     // GET ALL ORDERS
     public List<Order> getAllOrders() {
