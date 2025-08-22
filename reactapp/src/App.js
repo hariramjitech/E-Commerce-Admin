@@ -1,35 +1,36 @@
-import React from 'react';
-import { Routes, Route, NavLink } from 'react-router-dom';
-import ProductList from './components/ProductList';
-import ProductForm from './components/ProductForm';
-import OrderList from './components/OrderList';
-import CreateOrder from './components/CreateOrder';
-import OrderDetails from './components/OrderDetails';
-import Analytics from './components/Analytics';
-import './style/App.css';
-
+import { useState } from "react";
+import OrderDetails from "./components/OrderDetails";
+import ProductForm from "./components/ProductForm";
+import OrderList from "./components/OrderList";
 const App = () => {
-  return (
-    <div className="app-container">
-      <h1>E-Commerce Admin Dashboard</h1>
-      <nav className="nav-links">
-        <NavLink to="/" end>Products</NavLink>
-        <NavLink to="/add-product">Add Product</NavLink>
-        <NavLink to="/orders">Orders</NavLink>
-        <NavLink to="/create-order">Create Order</NavLink>
-        <NavLink to="/analytics">Analytics</NavLink>
-      </nav>
+      const [currentOrderId, setCurrentOrderId] = useState(null);
+      const [showProductForm, setShowProductForm] = useState(false);
 
-      <Routes>
-        <Route path="/" element={<ProductList />} />
-        <Route path="/add-product" element={<ProductForm />} />
-        <Route path="/orders" element={<OrderList />} />
-        <Route path="/orders/:id" element={<OrderDetails />} />
-        <Route path="/create-order" element={<CreateOrder />} />
-        <Route path="/analytics" element={<Analytics />} />
-      </Routes>
-    </div>
-  );
-};
+      const handleViewOrder = (orderId) => setCurrentOrderId(orderId);
+      const handleBack = () => setCurrentOrderId(null);
+      const handleAddProduct = () => setShowProductForm(true);
+      const handleCancelProduct = () => setShowProductForm(false);
+      const handleSaveProduct = () => setShowProductForm(false);
 
-export default App;
+      return (
+        <div className="container mx-auto">
+          {currentOrderId ? (
+            <OrderDetails orderId={currentOrderId} onBack={handleBack} />
+          ) : showProductForm ? (
+            <ProductForm onSave={handleSaveProduct} onCancel={handleCancelProduct} />
+          ) : (
+            <>
+              <button
+                className="mb-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                onClick={handleAddProduct}
+              >
+                Add Product
+              </button>
+              <OrderList onViewOrder={handleViewOrder} />
+            </>
+          )}
+        </div>
+      );
+    };
+
+    export default App;

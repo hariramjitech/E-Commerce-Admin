@@ -1,52 +1,46 @@
+// ProductService.java
+
 package com.examly.springapp.service;
 
 import com.examly.springapp.model.Product;
 import com.examly.springapp.repository.ProductRepository;
-import jakarta.validation.ValidationException;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final Validator validator;
 
     public Product createProduct(Product product) {
-        if (product.getName() == null || product.getName().isBlank() ||
-            product.getDescription() == null || product.getDescription().isBlank() ||
-            product.getPrice() <= 0 || product.getCategory() == null || product.getCategory().isBlank()) {
-            throw new ValidationException("Invalid product data");
+        Set<ConstraintViolation<Product>> violations = validator.validate(product);
+        if (!violations.isEmpty()) {
+            throw new ConstraintViolationException(violations);
         }
         return productRepository.save(product);
     }
 
-    public List<Product> getAllProducts(String category, Double minPrice, Double maxPrice) {
-        if (category != null && minPrice != null && maxPrice != null) {
-            return productRepository.findByCategoryContainingIgnoreCaseAndPriceBetween(category, minPrice, maxPrice);
-        } else if (category != null) {
-            return productRepository.findByCategoryContainingIgnoreCase(category);
-        } else if (minPrice != null && maxPrice != null) {
-            return productRepository.findByPriceBetween(minPrice, maxPrice);
-        } else {
-            return productRepository.findAll();
+    public List<Product> getAllProducts() {
+        return productRepository.findAll();
+    }
+
+    public Optional<Product> getProductById(Long id) {
+        return productRepository.findById(id);
+    }
+
+    public Product updateProduct(Product product) {
+        if (!productRepository.existsById(product.getProductId())) {
+            throw new RuntimeException("Product not found");
         }
-    }
-
-    public Product getProductById(Long id) {
-        return productRepository.findById(id).orElseThrow(() -> new RuntimeException("Product not found"));
-    }
-
-    public Product updateProduct(Long id, Product updated) {
-        Product product = getProductById(id);
-        product.setName(updated.getName());
-        product.setDescription(updated.getDescription());
-        product.setPrice(updated.getPrice());
-        product.setCategory(updated.getCategory());
-        product.setStockQuantity(updated.getStockQuantity());
-        product.setImageUrl(updated.getImageUrl());
         return productRepository.save(product);
     }
 
@@ -54,4 +48,14 @@ public class ProductService {
         productRepository.deleteById(id);
     }
 
+    // Filtering with Double type minPrice and maxPrice as in test cases
+    public List<Product> getFilteredProducts(String category, Double minPrice, Double maxPrice) {
+        List<Product> allProducts = productRepository.findAll();
+
+        return allProducts.stream()
+                .filter(p -> category == null || p.getCategory().equalsIgnoreCase(category))
+                .filter(p -> minPrice == null || p.getPrice() >= minPrice)
+                .filter(p -> maxPrice == null || p.getPrice() <= maxPrice)
+                .toList();
+    }
 }
